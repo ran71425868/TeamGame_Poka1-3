@@ -1,21 +1,28 @@
-#include "ItemHoldComponent.h"
+ï»¿#include "ItemHoldComponent.h"
 #include "GameFramework/Character.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 #include "CookingStation.h"
+#include "Engine/Engine.h"
+#include "UObject/UnrealType.h"
 
 UItemHoldComponent::UItemHoldComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+
+    // ãƒã‚°ãƒãƒƒãƒˆæ©Ÿèƒ½ã®ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆè¨­å®šï¼ˆBPå´ã§ä¸Šæ›¸ãå¯èƒ½ï¼‰
+    MagnetRadius = 300.0f;
+    MagnetSpeed = 10.0f;
+    CollectionDistance = 70.0f;
 }
 
 void UItemHoldComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
-    // ƒnƒCƒ‰ƒCƒg—p‚ÌƒƒbƒVƒ…ƒRƒ“ƒ|[ƒlƒ“ƒg‚ğ“®“I‚Éì¬‚µ‚ÄƒLƒƒƒ‰ƒNƒ^[‚ÉƒAƒ^ƒbƒ`
+    // ãƒã‚¤ãƒ©ã‚¤ãƒˆç”¨ã®ãƒ¡ãƒƒã‚·ãƒ¥ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚’å‹•çš„ã«ä½œæˆã—ã¦ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã«ã‚¢ã‚¿ãƒƒãƒ
     if (OwnerCharacter)
     {
         GridHighlightMesh = NewObject<UStaticMeshComponent>(OwnerCharacter, TEXT("GridHighlightMesh"));
@@ -23,10 +30,10 @@ void UItemHoldComponent::BeginPlay()
         {
             GridHighlightMesh->RegisterComponent();
             GridHighlightMesh->AttachToComponent(OwnerCharacter->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-            GridHighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Õ“Ë”»’è‚ÍƒIƒt
-            GridHighlightMesh->SetHiddenInGame(true); // Å‰‚Í”ñ•\¦
+            GridHighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // è¡çªåˆ¤å®šã¯ã‚ªãƒ•
+            GridHighlightMesh->SetHiddenInGame(true); // æœ€åˆã¯éè¡¨ç¤º
 
-            // BP‚Åİ’è‚³‚ê‚½ƒƒbƒVƒ…‚Æƒ}ƒeƒŠƒAƒ‹‚ğ“K—p
+            // BPã§è¨­å®šã•ã‚ŒãŸãƒ¡ãƒƒã‚·ãƒ¥ã¨ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’é©ç”¨
             if (HighlightMeshAsset)
             {
                 GridHighlightMesh->SetStaticMesh(HighlightMeshAsset);
@@ -43,7 +50,7 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// 1. èŒ³‚Ö‚Ìˆø‚«Šñ‚¹
+	// 1. æ‰‹å…ƒã¸ã®å¼•ãå¯„ã›
 	if (bIsItemSnapping && HeldItem && OwnerCharacter)
 	{
 		FVector CurrentLoc = HeldItem->GetRootComponent()->GetRelativeLocation();
@@ -61,7 +68,7 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 		}
 	}
 
-	// 2. Š÷‚Ö‚Ì”z’uˆÚ“®
+	// 2. æœºã¸ã®é…ç½®ç§»å‹•
 	if (bIsItemPlacing && PlacingItem)
 	{
 		FVector CurrentLoc = PlacingItem->GetActorLocation();
@@ -79,14 +86,82 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 			PlacingItem = nullptr;
 		}
 	}
-    // –ˆƒtƒŒ[ƒ€AƒOƒŠƒbƒh‚ÌƒnƒCƒ‰ƒCƒgˆÊ’u‚ğXV
+    // æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã€ã‚°ãƒªãƒƒãƒ‰ã®ãƒã‚¤ãƒ©ã‚¤ãƒˆä½ç½®ã‚’æ›´æ–°
     UpdateGridHighlight();
+
+    // ==========================================
+    // 3. ãŠé‡‘ã®è‡ªå‹•å¼•ãå¯„ã›ï¼ˆãƒã‚°ãƒãƒƒãƒˆï¼‰å‡¦ç†
+    // ==========================================
+    if (OwnerCharacter)
+    {
+        FVector PlayerLoc = OwnerCharacter->GetActorLocation();
+
+        // å¤‰æ•°ã§è¨­å®šã—ãŸç¯„å›²ã®ç£çŸ³åˆ¤å®šã‚’ä½œã‚‹
+        FCollisionShape MagnetSphere = FCollisionShape::MakeSphere(MagnetRadius);
+        TArray<FOverlapResult> MagnetOverlaps;
+        FCollisionQueryParams MagnetParams;
+        MagnetParams.AddIgnoredActor(OwnerCharacter);
+
+        GetWorld()->OverlapMultiByChannel(MagnetOverlaps, PlayerLoc, FQuat::Identity, ECC_Visibility, MagnetSphere, MagnetParams);
+
+        for (const FOverlapResult& Overlap : MagnetOverlaps)
+        {
+            AActor* HitActor = Overlap.GetActor();
+            // è¦‹ã¤ã‘ãŸã‚¢ã‚¯ã‚¿ãƒ¼ãŒã€ŒMoneyã€ã‚¿ã‚°ã‚’æŒã£ã¦ã„ã‚‹ã‹
+            if (HitActor && HitActor->ActorHasTag("Money"))
+            {
+                // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã¨ãŠé‡‘ã®ç¾åœ¨ã®è·é›¢ã‚’æ¸¬ã‚‹
+                float Distance = FVector::Dist(PlayerLoc, HitActor->GetActorLocation());
+
+                if (Distance <= CollectionDistance)
+                {
+                    // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆå€¤ã‚’0ã§ç”¨æ„
+                    int32 CollectedMoney = 0;
+                    int32 CollectedScore = 0;
+
+                    // â˜…C++ã®ãƒªãƒ•ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚’ä½¿ã„ã€BPå´ã®ã€ŒMoneyAmountã€ã¨ã„ã†å¤‰æ•°ã‚’å®‰å…¨ã«å–å¾—ã™ã‚‹
+                    if (FProperty* MoneyProp = HitActor->GetClass()->FindPropertyByName(FName("MoneyAmount")))
+                    {
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(MoneyProp))
+                        {
+                            CollectedMoney = IntProp->GetPropertyValue_InContainer(HitActor);
+                        }
+                    }
+
+                    // â˜…åŒã˜ãã€BPå´ã®ã€ŒSorePointã€ã¨ã„ã†å¤‰æ•°ã‚’å®‰å…¨ã«å–å¾—ã™ã‚‹
+                    if (FProperty* ScoreProp = HitActor->GetClass()->FindPropertyByName(FName("ScorePoint")))
+                    {
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(ScoreProp))
+                        {
+                            CollectedScore = IntProp->GetPropertyValue_InContainer(HitActor);
+                        }
+                    }
+
+                    // å–å¾—ã—ãŸå‹•çš„ãªå€¤ã‚’ã‚¤ãƒ™ãƒ³ãƒˆã«æ¸¡ã—ã¦ãƒ–ãƒ«ãƒ¼ãƒ—ãƒªãƒ³ãƒˆã¸é€šçŸ¥ï¼
+                    OnMoneyCollected.Broadcast(CollectedMoney, CollectedScore);
+
+                    HitActor->Destroy();
+                    if (GEngine)
+                    {
+                        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("ãƒã‚°ãƒãƒƒãƒˆå›åï¼ ãƒãƒãƒ¼: %d, ã‚¹ã‚³ã‚¢: %d"), CollectedMoney, CollectedScore));
+                    }
+                    UE_LOG(LogTemp, Warning, TEXT("ãƒã‚°ãƒãƒƒãƒˆã§ãŠé‡‘ã‚’å›åã—ã¾ã—ãŸï¼ç²å¾—ãƒãƒãƒ¼: %d, ç²å¾—ã‚¹ã‚³ã‚¢: %d"), CollectedMoney, CollectedScore);
+                }
+                else
+                {
+                    FVector TargetLoc = PlayerLoc + FVector(0.0f, 0.0f, 40.0f);
+                    FVector NewLoc = FMath::VInterpTo(HitActor->GetActorLocation(), TargetLoc, DeltaTime, MagnetSpeed);
+                    HitActor->SetActorLocation(NewLoc);
+                }
+            }
+        }
+    }
 }
 
-// ƒnƒCƒ‰ƒCƒg•\¦—p‚ÌŠÖ”
+// ãƒã‚¤ãƒ©ã‚¤ãƒˆè¡¨ç¤ºç”¨ã®é–¢æ•°
 void UItemHoldComponent::UpdateGridHighlight()
 {
-    // ƒAƒCƒeƒ€‚ğ‚Á‚Ä‚¢‚È‚¢A‚Ü‚½‚Í”z’uˆÚ“®’†‚Ìê‡‚Í”ñ•\¦‚É‚µ‚Äˆ—I—¹
+    // ã‚¢ã‚¤ãƒ†ãƒ ã‚’æŒã£ã¦ã„ãªã„ã€ã¾ãŸã¯é…ç½®ç§»å‹•ä¸­ã®å ´åˆã¯éè¡¨ç¤ºã«ã—ã¦å‡¦ç†çµ‚äº†
     if (!HeldItem || bIsItemSnapping || bIsItemPlacing || !OwnerCharacter || !GridHighlightMesh)
     {
         if (GridHighlightMesh) GridHighlightMesh->SetHiddenInGame(true);
@@ -94,17 +169,17 @@ void UItemHoldComponent::UpdateGridHighlight()
         return;
     }
 
-    // 1. ‚Ü‚¸ƒLƒƒƒ‰ƒNƒ^[‚Ì–Ú‚Ì‘O‚ÌÀ•W‚ğŠî€“_‚Æ‚·‚é
+    // 1. ã¾ãšã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®ç›®ã®å‰ã®åº§æ¨™ã‚’åŸºæº–ç‚¹ã¨ã™ã‚‹
     FVector Start = OwnerCharacter->GetActorLocation();
     FVector Forward = OwnerCharacter->GetActorForwardVector();
     FVector TargetBase = Start + (Forward * InteractDistance);
 
-    // 2. æ‚ÉX‚ÆY‚ğƒOƒŠƒbƒhƒTƒCƒY‚ÉƒXƒiƒbƒvi‹z’…j‚³‚¹‚é
+    // 2. å…ˆã«Xã¨Yã‚’ã‚°ãƒªãƒƒãƒ‰ã‚µã‚¤ã‚ºã«ã‚¹ãƒŠãƒƒãƒ—ï¼ˆå¸ç€ï¼‰ã•ã›ã‚‹
     float SnappedX = FMath::GridSnap(TargetBase.X, GridSize);
     float SnappedY = FMath::GridSnap(TargetBase.Y, GridSize);
 
-    // 3. ƒXƒiƒbƒv‚µ‚½ƒOƒŠƒbƒh‚Ìuã‹ó‚©‚ç^‰ºv‚ÉŒü‚©‚Á‚Äƒ‰ƒCƒ“ƒgƒŒ[ƒX‚ğ—‚Æ‚·
-    // Start.Z + 200.0f : ƒLƒƒƒ‰ƒNƒ^[‚æ‚è­‚µ‚‚¢ˆÊ’u‚©‚ç—‚Æ‚·‚±‚Æ‚ÅA‚‚¢Š÷‚àŒŸ’m‰Â”\‚É‚·‚é
+    // 3. ã‚¹ãƒŠãƒƒãƒ—ã—ãŸã‚°ãƒªãƒƒãƒ‰ã®ã€Œä¸Šç©ºã‹ã‚‰çœŸä¸‹ã€ã«å‘ã‹ã£ã¦ãƒ©ã‚¤ãƒ³ãƒˆãƒ¬ãƒ¼ã‚¹ã‚’è½ã¨ã™
+    // Start.Z + 200.0f : ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã‚ˆã‚Šå°‘ã—é«˜ã„ä½ç½®ã‹ã‚‰è½ã¨ã™ã“ã¨ã§ã€é«˜ã„æœºã‚‚æ¤œçŸ¥å¯èƒ½ã«ã™ã‚‹
     FVector TraceStart = FVector(SnappedX, SnappedY, Start.Z + 200.0f);
     FVector TraceEnd = FVector(SnappedX, SnappedY, Start.Z - 500.0f);
 
@@ -113,21 +188,21 @@ void UItemHoldComponent::UpdateGridHighlight()
     TraceParams.AddIgnoredActor(OwnerCharacter);
     TraceParams.AddIgnoredActor(HeldItem);
 
-    // ^‰º‚ÉŒü‚©‚Á‚Ä”»’è‚ğ”ò‚Î‚µAÅ‰‚ÉŒ©‚Â‚©‚Á‚½uˆê”Ô‚‚¢ƒIƒuƒWƒFƒNƒgv‚ğæ“¾
+    // çœŸä¸‹ã«å‘ã‹ã£ã¦åˆ¤å®šã‚’é£›ã°ã—ã€æœ€åˆã«è¦‹ã¤ã‹ã£ãŸã€Œä¸€ç•ªé«˜ã„ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã€ã‚’å–å¾—
     if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, TraceParams))
     {
-        // š•ÏX: –Ê‚ªãŒü‚«‚©‚Ç‚¤‚©‚É‰Á‚¦Auƒqƒbƒg‚µ‚½‚‚³‚ªAƒLƒƒƒ‰ƒNƒ^[‚Ì’†S(Start.Z){ãŒÀ’lˆÈ‰º‚©v‚ğƒ`ƒFƒbƒN
+        // â˜…å¤‰æ›´: é¢ãŒä¸Šå‘ãã‹ã©ã†ã‹ã«åŠ ãˆã€ã€Œãƒ’ãƒƒãƒˆã—ãŸé«˜ã•ãŒã€ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®ä¸­å¿ƒ(Start.Z)ï¼‹ä¸Šé™å€¤ä»¥ä¸‹ã‹ã€ã‚’ãƒã‚§ãƒƒã‚¯
         if (HitResult.ImpactNormal.Z > 0.5f && (HitResult.ImpactPoint.Z <= Start.Z + MaxPlacementHeight))
         {
-            // ƒqƒbƒg‚µ‚½ZÀ•Wi‚‚³j‚ğg‚Á‚ÄÅI“I‚È”z’uˆÊ’u‚ğŒˆ’è
+            // ãƒ’ãƒƒãƒˆã—ãŸZåº§æ¨™ï¼ˆé«˜ã•ï¼‰ã‚’ä½¿ã£ã¦æœ€çµ‚çš„ãªé…ç½®ä½ç½®ã‚’æ±ºå®š
             FVector SnappedLocation = FVector(SnappedX, SnappedY, HitResult.ImpactPoint.Z + PlacementZOffset);
 
-            // ”z’u—\’è‚Ì‹óŠÔ‚É‚·‚Å‚É‘¼‚Ìƒgƒ}ƒg‚È‚Ç‚ª‚È‚¢‚©ƒ`ƒFƒbƒN
+            // é…ç½®äºˆå®šã®ç©ºé–“ã«ã™ã§ã«ä»–ã®ãƒˆãƒãƒˆãªã©ãŒãªã„ã‹ãƒã‚§ãƒƒã‚¯
             FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f);
             bool bIsOccupied = false;
             TArray<FOverlapResult> CheckOverlaps;
 
-            // “y‘äiŠ÷‚â°j©‘Ì‚ÍƒAƒCƒeƒ€‚ÆŒ©‚È‚³‚È‚¢‚æ‚¤ƒ`ƒFƒbƒN‚©‚çœŠO‚·‚é
+            // åœŸå°ï¼ˆæœºã‚„åºŠï¼‰è‡ªä½“ã¯ã‚¢ã‚¤ãƒ†ãƒ ã¨è¦‹ãªã•ãªã„ã‚ˆã†ãƒã‚§ãƒƒã‚¯ã‹ã‚‰é™¤å¤–ã™ã‚‹
             FCollisionQueryParams OverlapParams = TraceParams;
             if (HitResult.GetActor())
             {
@@ -138,7 +213,7 @@ void UItemHoldComponent::UpdateGridHighlight()
 
             for (const FOverlapResult& OverlapCheck : CheckOverlaps)
             {
-                // œŠO‚µ‚½“y‘äˆÈŠO‚ÌuHoldablevƒAƒCƒeƒ€‚ª‚»‚±‚É‘¶İ‚µ‚Ä‚¢‚ê‚Î’u‚¯‚È‚¢
+                // é™¤å¤–ã—ãŸåœŸå°ä»¥å¤–ã®ã€ŒHoldableã€ã‚¢ã‚¤ãƒ†ãƒ ãŒãã“ã«å­˜åœ¨ã—ã¦ã„ã‚Œã°ç½®ã‘ãªã„
                 if (OverlapCheck.GetActor() && OverlapCheck.GetActor()->ActorHasTag("Holdable"))
                 {
                     bIsOccupied = true;
@@ -146,13 +221,13 @@ void UItemHoldComponent::UpdateGridHighlight()
                 }
             }
 
-            // ‹óŠÔ‚ª‹ó‚¢‚Ä‚¢‚ê‚ÎƒnƒCƒ‰ƒCƒg‚ğ•\¦‚µ‚Ä”z’u‰Â”\‚É‚·‚é
+            // ç©ºé–“ãŒç©ºã„ã¦ã„ã‚Œã°ãƒã‚¤ãƒ©ã‚¤ãƒˆã‚’è¡¨ç¤ºã—ã¦é…ç½®å¯èƒ½ã«ã™ã‚‹
             if (!bIsOccupied)
             {
                 bCanPlaceOnGrid = true;
                 CurrentGridTargetLocation = SnappedLocation;
 
-                // Œü‚«‚à“Œ¼“ì–ki90“xj‚ÉƒXƒiƒbƒv‚³‚¹‚é
+                // å‘ãã‚‚æ±è¥¿å—åŒ—ï¼ˆ90åº¦ï¼‰ã«ã‚¹ãƒŠãƒƒãƒ—ã•ã›ã‚‹
                 float SnappedYaw = FMath::RoundToFloat(OwnerCharacter->GetActorRotation().Yaw / 90.0f) * 90.0f;
                 CurrentGridTargetRotation = FRotator(0.0f, SnappedYaw, 0.0f);
 
@@ -163,7 +238,7 @@ void UItemHoldComponent::UpdateGridHighlight()
         }
     }
 
-    // ƒqƒbƒg‚µ‚È‚©‚Á‚½A‚·‚Å‚ÉƒAƒCƒeƒ€‚ª‚ ‚éA‚Ü‚½‚Íy‚‚·‚¬‚éêŠi—â‘ ŒÉ‚È‚Çjz‚Ìê‡‚Í”ñ•\¦
+    // ãƒ’ãƒƒãƒˆã—ãªã‹ã£ãŸã€ã™ã§ã«ã‚¢ã‚¤ãƒ†ãƒ ãŒã‚ã‚‹ã€ã¾ãŸã¯ã€é«˜ã™ãã‚‹å ´æ‰€ï¼ˆå†·è”µåº«ãªã©ï¼‰ã€‘ã®å ´åˆã¯éè¡¨ç¤º
     bCanPlaceOnGrid = false;
     GridHighlightMesh->SetHiddenInGame(true);
 }
@@ -194,14 +269,14 @@ void UItemHoldComponent::PrimaryInteract()
         AActor* FoundTrashCan = nullptr; 
         AActor* FoundCookingStation = nullptr;
 
-        // –Ú‚Ì‘O‚É‰½‚ª‚ ‚é‚©’T‚·
+        // ç›®ã®å‰ã«ä½•ãŒã‚ã‚‹ã‹æ¢ã™
         for (const FOverlapResult& Overlap : Overlaps)
         {
             AActor* HitActor = Overlap.GetActor();
             if (HitActor)
             {
                 if (HitActor->ActorHasTag("TrashCan")) { FoundTrashCan = HitActor; break; }
-                else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; } // y’Ç‰Áz
+                else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; } // ã€è¿½åŠ ã€‘
                 else if (HitActor->ActorHasTag("Counter")) { FoundCounter = HitActor; break; }
             }
         }
@@ -212,51 +287,51 @@ void UItemHoldComponent::PrimaryInteract()
             HeldItem = nullptr;
             bIsItemSnapping = false;
         }
-        else if (FoundCookingStation) // y’Ç‰ÁzƒRƒ“ƒ“™‚ÉƒAƒCƒeƒ€‚ğƒZƒbƒg‚·‚éˆ—
+        else if (FoundCookingStation) // ã€è¿½åŠ ã€‘ã‚³ãƒ³ãƒ­ç­‰ã«ã‚¢ã‚¤ãƒ†ãƒ ã‚’ã‚»ãƒƒãƒˆã™ã‚‹å‡¦ç†
         {
             ACookingStation* Station = Cast<ACookingStation>(FoundCookingStation);
-            // Station‚ÌPlaceItemŠÖ”‚ğŒÄ‚Ño‚µA¬Œ÷‚µ‚½‚çè‚¿‚ğ‹ó‚É‚·‚é
+            // Stationã®PlaceItemé–¢æ•°ã‚’å‘¼ã³å‡ºã—ã€æˆåŠŸã—ãŸã‚‰æ‰‹æŒã¡ã‚’ç©ºã«ã™ã‚‹
             if (Station && Station->PlaceItem(HeldItem))
             {
                 if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                 {
                     PrimComp->SetSimulatePhysics(false);
-                    PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision); // ’²—’†‚ÍG‚ê‚È‚­‚·‚é
+                    PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision); // èª¿ç†ä¸­ã¯è§¦ã‚Œãªãã™ã‚‹
                 }
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
             }
         }
-        // ƒJƒEƒ“ƒ^[‚É‘Î‚·‚éˆ—iæ‚Ù‚Çì‚Á‚½d•¡ƒ`ƒFƒbƒN“ü‚èj
+        // ã‚«ã‚¦ãƒ³ã‚¿ãƒ¼ã«å¯¾ã™ã‚‹å‡¦ç†ï¼ˆå…ˆã»ã©ä½œã£ãŸé‡è¤‡ãƒã‚§ãƒƒã‚¯å…¥ã‚Šï¼‰
         else if (FoundCounter)
         {
-            // ’u‚­—\’è‚ÌÀ•W‚ğŒvZ
+            // ç½®ãäºˆå®šã®åº§æ¨™ã‚’è¨ˆç®—
             FVector TargetLoc = FoundCounter->GetActorLocation() + FVector(0.0f, 0.0f, 90.0f);
 
-            // ’u‚­êŠ‚É‚·‚Å‚ÉƒAƒCƒeƒ€‚ª‚È‚¢‚©ƒ`ƒFƒbƒN‚·‚é
-            FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f); // ƒ`ƒFƒbƒN—p‚Ì¬‚³‚È‹…
+            // ç½®ãå ´æ‰€ã«ã™ã§ã«ã‚¢ã‚¤ãƒ†ãƒ ãŒãªã„ã‹ãƒã‚§ãƒƒã‚¯ã™ã‚‹
+            FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f); // ãƒã‚§ãƒƒã‚¯ç”¨ã®å°ã•ãªçƒ
             FCollisionQueryParams CheckParams;
-            CheckParams.AddIgnoredActor(OwnerCharacter); // ©•ª‚Í–³‹
-            CheckParams.AddIgnoredActor(HeldItem);       // ¡è‚É‚Á‚Ä‚¢‚éƒAƒCƒeƒ€‚à–³‹
+            CheckParams.AddIgnoredActor(OwnerCharacter); // è‡ªåˆ†ã¯ç„¡è¦–
+            CheckParams.AddIgnoredActor(HeldItem);       // ä»Šæ‰‹ã«æŒã£ã¦ã„ã‚‹ã‚¢ã‚¤ãƒ†ãƒ ã‚‚ç„¡è¦–
 
-            bool bIsOccupied = false; // ‚·‚Å‚ÉêŠ‚ª–„‚Ü‚Á‚Ä‚¢‚é‚©‚Ìƒtƒ‰ƒO
+            bool bIsOccupied = false; // ã™ã§ã«å ´æ‰€ãŒåŸ‹ã¾ã£ã¦ã„ã‚‹ã‹ã®ãƒ•ãƒ©ã‚°
             TArray<FOverlapResult> CheckOverlaps;
             GetWorld()->OverlapMultiByChannel(CheckOverlaps, TargetLoc, FQuat::Identity, ECC_Visibility, CheckSphere, CheckParams);
 
-            // ’u‚­—\’è‚ÌêŠ‚É‰½‚©‚ ‚Á‚½‚çA‚»‚ê‚ªƒAƒCƒeƒ€‚©Šm”F
+            // ç½®ãäºˆå®šã®å ´æ‰€ã«ä½•ã‹ã‚ã£ãŸã‚‰ã€ãã‚ŒãŒã‚¢ã‚¤ãƒ†ãƒ ã‹ç¢ºèª
             for (const FOverlapResult& Overlap : CheckOverlaps)
             {
                 if (Overlap.GetActor() && Overlap.GetActor()->ActorHasTag("Holdable"))
                 {
-                    bIsOccupied = true; // ƒAƒCƒeƒ€‚ª‚ ‚Á‚½I
+                    bIsOccupied = true; // ã‚¢ã‚¤ãƒ†ãƒ ãŒã‚ã£ãŸï¼
                     break;
                 }
             }
 
-            // ‚à‚µ‚·‚Å‚ÉƒAƒCƒeƒ€‚ª’u‚©‚ê‚Ä‚¢‚½‚çA‚±‚±‚Åˆ—‚ğ’†’fi’u‚©‚È‚¢j
+            // ã‚‚ã—ã™ã§ã«ã‚¢ã‚¤ãƒ†ãƒ ãŒç½®ã‹ã‚Œã¦ã„ãŸã‚‰ã€ã“ã“ã§å‡¦ç†ã‚’ä¸­æ–­ï¼ˆç½®ã‹ãªã„ï¼‰
             if (bIsOccupied)
             {
-                UE_LOG(LogTemp, Warning, TEXT("‚±‚±‚É‚Í‚·‚Å‚ÉƒAƒCƒeƒ€‚ª’u‚©‚ê‚Ä‚¢‚Ü‚·I"));
+                UE_LOG(LogTemp, Warning, TEXT("ã“ã“ã«ã¯ã™ã§ã«ã‚¢ã‚¤ãƒ†ãƒ ãŒç½®ã‹ã‚Œã¦ã„ã¾ã™ï¼"));
                 return;
             }
 
@@ -275,12 +350,12 @@ void UItemHoldComponent::PrimaryInteract()
         }
         else
         {
-            // ‰½‚à‚È‚¢‹óŠÔ‚Ìê‡ATick‚ÅŒvZÏ‚İ‚ÌÀ•WibCanPlaceOnGridj‚ğg‚Á‚Ä”z’u‚·‚é
+            // ä½•ã‚‚ãªã„ç©ºé–“ã®å ´åˆã€Tickã§è¨ˆç®—æ¸ˆã¿ã®åº§æ¨™ï¼ˆbCanPlaceOnGridï¼‰ã‚’ä½¿ã£ã¦é…ç½®ã™ã‚‹
             if (bCanPlaceOnGrid)
             {
                 HeldItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-                // Tick‚ÅƒnƒCƒ‰ƒCƒg—p‚ÉŒvZ‚µ‚½À•W‚Æ‰ñ“]‚ğ‚»‚Ì‚Ü‚Ü”z’uæ‚Ég‚¤
+                // Tickã§ãƒã‚¤ãƒ©ã‚¤ãƒˆç”¨ã«è¨ˆç®—ã—ãŸåº§æ¨™ã¨å›è»¢ã‚’ãã®ã¾ã¾é…ç½®å…ˆã«ä½¿ã†
                 PlaceTargetLocation = CurrentGridTargetLocation;
                 PlaceTargetRotation = CurrentGridTargetRotation;
 
@@ -296,7 +371,7 @@ void UItemHoldComponent::PrimaryInteract()
             }
             else
             {
-                // °‚ªŒ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡i‹ó’†‚È‚Çj‚Íu“Š‚°‚év
+                // åºŠãŒè¦‹ã¤ã‹ã‚‰ãªã‹ã£ãŸå ´åˆï¼ˆç©ºä¸­ãªã©ï¼‰ã¯ã€ŒæŠ•ã’ã‚‹ã€
                 HeldItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
                 if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                 {
@@ -337,16 +412,16 @@ void UItemHoldComponent::PrimaryInteract()
                         }
                     }
                 }
-                else if (HitActor->ActorHasTag("CookingStation")) // y’Ç‰ÁzƒRƒ“ƒ“™‚©‚çŠ®¬•i‚ğæ‚èo‚·ˆ—
+                else if (HitActor->ActorHasTag("CookingStation")) // ã€è¿½åŠ ã€‘ã‚³ãƒ³ãƒ­ç­‰ã‹ã‚‰å®Œæˆå“ã‚’å–ã‚Šå‡ºã™å‡¦ç†
                 {
                     ACookingStation* Station = Cast<ACookingStation>(HitActor);
                     if (Station)
                     {
-                        // Ší‹ï‚©‚çƒAƒCƒeƒ€‚ğæ‚èo‚·i¶Ä‚¯‚Ìê‡‚Ínullptr‚ª•Ô‚Á‚Ä‚­‚éj
+                        // å™¨å…·ã‹ã‚‰ã‚¢ã‚¤ãƒ†ãƒ ã‚’å–ã‚Šå‡ºã™ï¼ˆç”Ÿç„¼ã‘ã®å ´åˆã¯nullptrãŒè¿”ã£ã¦ãã‚‹ï¼‰
                         AActor* RetrievedItem = Station->RetrieveItem();
                         if (RetrievedItem)
                         {
-                            HeldItem = RetrievedItem; // æ‚èo‚µ‚½‚à‚Ì‚ğè‚É‚Â
+                            HeldItem = RetrievedItem; // å–ã‚Šå‡ºã—ãŸã‚‚ã®ã‚’æ‰‹ã«æŒã¤
                             if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                             {
                                 PrimComp->SetSimulatePhysics(false);
@@ -358,7 +433,7 @@ void UItemHoldComponent::PrimaryInteract()
                         }
                     }
                 }
-                // 2. –Ú‚Ì‘O‚ÌƒIƒuƒWƒFƒNƒg‚ªu’u‚©‚ê‚Ä‚¢‚éƒAƒCƒeƒ€v‚¾‚Á‚½ê‡
+                // 2. ç›®ã®å‰ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãŒã€Œç½®ã‹ã‚Œã¦ã„ã‚‹ã‚¢ã‚¤ãƒ†ãƒ ã€ã ã£ãŸå ´åˆ
                 else if (HitActor->ActorHasTag("Holdable"))
                 {
                     if (HitActor == PlacingItem)
@@ -374,7 +449,7 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
-                    break; // ˆ—‚ğŠ®—¹‚µ‚Äƒ‹[ƒv‚ğ”²‚¯‚é
+                    break; // å‡¦ç†ã‚’å®Œäº†ã—ã¦ãƒ«ãƒ¼ãƒ—ã‚’æŠœã‘ã‚‹
                 }
             }
         }
