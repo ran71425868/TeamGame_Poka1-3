@@ -11,9 +11,8 @@
 
 UItemHoldComponent::UItemHoldComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = true;
 
-    // マグネット機能のデフォルト設定（BP側で上書き可能）
     MagnetRadius = 300.0f;
     MagnetSpeed = 10.0f;
     CollectionDistance = 70.0f;
@@ -21,9 +20,8 @@ UItemHoldComponent::UItemHoldComponent()
 
 void UItemHoldComponent::BeginPlay()
 {
-	Super::BeginPlay();
-	OwnerCharacter = Cast<ACharacter>(GetOwner());
-    // ハイライト用のメッシュコンポーネントを動的に作成してキャラクターにアタッチ
+    Super::BeginPlay();
+    OwnerCharacter = Cast<ACharacter>(GetOwner());
     if (OwnerCharacter)
     {
         GridHighlightMesh = NewObject<UStaticMeshComponent>(OwnerCharacter, TEXT("GridHighlightMesh"));
@@ -31,10 +29,9 @@ void UItemHoldComponent::BeginPlay()
         {
             GridHighlightMesh->RegisterComponent();
             GridHighlightMesh->AttachToComponent(OwnerCharacter->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-            GridHighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 衝突判定はオフ
-            GridHighlightMesh->SetHiddenInGame(true); // 最初は非表示
+            GridHighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            GridHighlightMesh->SetHiddenInGame(true);
 
-            // BPで設定されたメッシュとマテリアルを適用
             if (HighlightMeshAsset)
             {
                 GridHighlightMesh->SetStaticMesh(HighlightMeshAsset);
@@ -51,7 +48,6 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    // 1. 手元への引き寄せ
     if (bIsItemSnapping && HeldItem && OwnerCharacter)
     {
         FVector CurrentLoc = HeldItem->GetRootComponent()->GetRelativeLocation();
@@ -69,7 +65,6 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         }
     }
 
-    // 2. 机への配置移動
     if (bIsItemPlacing && PlacingItem)
     {
         FVector CurrentLoc = PlacingItem->GetActorLocation();
@@ -87,12 +82,8 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
             PlacingItem = nullptr;
         }
     }
-    // 毎フレーム、グリッドのハイライト位置を更新
     UpdateGridHighlight();
 
-    // ==========================================
-    // 3. お金の自動引き寄せ（マグネット）処理
-    // ==========================================
     if (OwnerCharacter)
     {
         FVector PlayerLoc = OwnerCharacter->GetActorLocation();
@@ -116,7 +107,7 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
                     int32 CollectedMoney = 0;
                     int32 CollectedScore = 0;
 
-                    if (FProperty* MoneyProp = HitActor->GetClass()->FindPropertyByName(FName("MoneyAmount")))
+                    if (FProperty* MoneyProp = HitActor->GetClass()->FindPropertyByName(FName("Amount")))
                     {
                         if (FIntProperty* IntProp = CastField<FIntProperty>(MoneyProp))
                             CollectedMoney = IntProp->GetPropertyValue_InContainer(HitActor);
@@ -127,16 +118,13 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
                             CollectedScore = IntProp->GetPropertyValue_InContainer(HitActor);
                     }
 
-                    // 取得した動的な値をイベントに渡してブループリントへ通知
                     OnMoneyCollected.Broadcast(CollectedMoney, CollectedScore);
 
-                    // ★追加：合計変数に加算する！
                     TotalCollectedMoney += CollectedMoney;
                     TotalCollectedScore += CollectedScore;
 
                     HitActor->Destroy();
 
-                    // 回収した瞬間のログ出力（コンソール用）
                     UE_LOG(LogTemp, Warning, TEXT("マネー回収！ 獲得:%d, スコア:%d | 合計お金:%d, 合計スコア:%d"), CollectedMoney, CollectedScore, TotalCollectedMoney, TotalCollectedScore);
                 }
                 else
@@ -149,22 +137,15 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         }
     }
 
-    // ==========================================
-    // 【常時表示UI用】 デバッグメッセージの固定表示
-    // ==========================================
     if (GEngine)
     {
-        // 第1引数（Key）を「100」「101」など固定の数値にすると、毎フレーム上書きされ常時表示HUDのようになります
-        // 第2引数（Duration）を「0.0f」にすることで、1フレームだけ表示＝毎フレーム更新されます
         GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
         GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
     }
 }
 
-// ハイライト表示用の関数
 void UItemHoldComponent::UpdateGridHighlight()
 {
-    // アイテムを持っていない、または配置移動中の場合は非表示にして処理終了
     if (!HeldItem || bIsItemSnapping || bIsItemPlacing || !OwnerCharacter || !GridHighlightMesh)
     {
         if (GridHighlightMesh) GridHighlightMesh->SetHiddenInGame(true);
@@ -172,17 +153,13 @@ void UItemHoldComponent::UpdateGridHighlight()
         return;
     }
 
-    // 1. まずキャラクターの目の前の座標を基準点とする
     FVector Start = OwnerCharacter->GetActorLocation();
     FVector Forward = OwnerCharacter->GetActorForwardVector();
     FVector TargetBase = Start + (Forward * InteractDistance);
 
-    // 2. 先にXとYをグリッドサイズにスナップ（吸着）させる
     float SnappedX = FMath::GridSnap(TargetBase.X, GridSize);
     float SnappedY = FMath::GridSnap(TargetBase.Y, GridSize);
 
-    // 3. スナップしたグリッドの「上空から真下」に向かってライントレースを落とす
-    // Start.Z + 200.0f : キャラクターより少し高い位置から落とすことで、高い机も検知可能にする
     FVector TraceStart = FVector(SnappedX, SnappedY, Start.Z + 200.0f);
     FVector TraceEnd = FVector(SnappedX, SnappedY, Start.Z - 500.0f);
 
@@ -191,21 +168,16 @@ void UItemHoldComponent::UpdateGridHighlight()
     TraceParams.AddIgnoredActor(OwnerCharacter);
     TraceParams.AddIgnoredActor(HeldItem);
 
-    // 真下に向かって判定を飛ばし、最初に見つかった「一番高いオブジェクト」を取得
     if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, TraceParams))
     {
-        // ★変更: 面が上向きかどうかに加え、「ヒットした高さが、キャラクターの中心(Start.Z)＋上限値以下か」をチェック
         if (HitResult.ImpactNormal.Z > 0.5f && (HitResult.ImpactPoint.Z <= Start.Z + MaxPlacementHeight))
         {
-            // ヒットしたZ座標（高さ）を使って最終的な配置位置を決定
             FVector SnappedLocation = FVector(SnappedX, SnappedY, HitResult.ImpactPoint.Z + PlacementZOffset);
 
-            // 配置予定の空間にすでに他のトマトなどがないかチェック
             FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f);
             bool bIsOccupied = false;
             TArray<FOverlapResult> CheckOverlaps;
 
-            // 土台（机や床）自体はアイテムと見なさないようチェックから除外する
             FCollisionQueryParams OverlapParams = TraceParams;
             if (HitResult.GetActor())
             {
@@ -216,7 +188,6 @@ void UItemHoldComponent::UpdateGridHighlight()
 
             for (const FOverlapResult& OverlapCheck : CheckOverlaps)
             {
-                // 除外した土台以外の「Holdable」アイテムがそこに存在していれば置けない
                 if (OverlapCheck.GetActor() && OverlapCheck.GetActor()->ActorHasTag("Holdable"))
                 {
                     bIsOccupied = true;
@@ -224,13 +195,11 @@ void UItemHoldComponent::UpdateGridHighlight()
                 }
             }
 
-            // 空間が空いていればハイライトを表示して配置可能にする
             if (!bIsOccupied)
             {
                 bCanPlaceOnGrid = true;
                 CurrentGridTargetLocation = SnappedLocation;
 
-                // 向きも東西南北（90度）にスナップさせる
                 float SnappedYaw = FMath::RoundToFloat(OwnerCharacter->GetActorRotation().Yaw / 90.0f) * 90.0f;
                 CurrentGridTargetRotation = FRotator(0.0f, SnappedYaw, 0.0f);
 
@@ -241,7 +210,6 @@ void UItemHoldComponent::UpdateGridHighlight()
         }
     }
 
-    // ヒットしなかった、すでにアイテムがある、または【高すぎる場所（冷蔵庫など）】の場合は非表示
     bCanPlaceOnGrid = false;
     GridHighlightMesh->SetHiddenInGame(true);
 }
@@ -250,7 +218,6 @@ void UItemHoldComponent::PrimaryInteract()
 {
     if (!OwnerCharacter) return;
 
-    // 【デバッグ①】そもそもこの関数が呼ばれているか？（インタラクトキーが効いているか）
     if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("[Debug] PrimaryInteract Called!"));
 
     FVector Start = OwnerCharacter->GetActorLocation();
@@ -269,12 +236,8 @@ void UItemHoldComponent::PrimaryInteract()
     TArray<FOverlapResult> Overlaps;
     GetWorld()->OverlapMultiByChannel(Overlaps, OverlapCenter, FQuat::Identity, ECC_Visibility, Sphere, Params);
 
-    // ===============================================
-    // アイテムを持っている時の処理（置く・渡す）
-    // ===============================================
     if (HeldItem)
     {
-        // 【デバッグ②】アイテムを持っていると認識されているか？
         if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Orange, FString::Printf(TEXT("[Debug] Holding Item: %s"), *HeldItem->GetName()));
 
         AActor* FoundCounter = nullptr;
@@ -287,9 +250,6 @@ void UItemHoldComponent::PrimaryInteract()
             AActor* HitActor = Overlap.GetActor();
             if (HitActor)
             {
-                // ※もし目の前のアクターが全く検知されていない場合は、ここのコメントアウトを外すと当たっている全アクター名が表示されます
-                if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::White, FString::Printf(TEXT("[Hit] %s"), *HitActor->GetName()));
-
                 if (HitActor->ActorHasTag("TrashCan")) { FoundTrashCan = HitActor; break; }
                 else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; }
                 else if (HitActor->ActorHasTag("Customer")) { FoundCustomer = HitActor; break; }
@@ -319,44 +279,41 @@ void UItemHoldComponent::PrimaryInteract()
         }
         else if (FoundCustomer)
         {
-            // 【デバッグ③】「Customer」タグを持つアクターを検知できたか？
             if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("[Debug] Found Customer Actor!"));
 
             ABobNPCCharacter* Customer = Cast<ABobNPCCharacter>(FoundCustomer);
             if (Customer)
             {
-                // 【デバッグ④】お客さんの現在の状態は何か？
                 FString StateStr = (Customer->CurrentState == ECustomerState::Waiting) ? TEXT("Waiting") : TEXT("NOT Waiting");
                 if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta, FString::Printf(TEXT("[Debug] Customer State is: %s"), *StateStr));
 
                 if (Customer->CurrentState == ECustomerState::Waiting)
                 {
-                    int32 FoodMoney = -1;
-                    int32 FoodScore = -1;
+                    FName FoodTag = NAME_None;
+                    float PriceMult = 1.0f;
+                    int32 FoodScore = 0;
 
-                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("MoneyAmount")))
+                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ProvidedFoodTag")))
                     {
-                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop)) FoodMoney = IntProp->GetPropertyValue_InContainer(HeldItem);
+                        if (FNameProperty* NameProp = CastField<FNameProperty>(Prop))
+                            FoodTag = NameProp->GetPropertyValue_InContainer(HeldItem);
+                    }
+                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("PriceMultiplier")))
+                    {
+                        if (FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
+                            PriceMult = FloatProp->GetPropertyValue_InContainer(HeldItem);
                     }
                     if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ScorePoint")))
                     {
-                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop)) FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
-                    }
-                    else if (FProperty* SoreProp = HeldItem->GetClass()->FindPropertyByName(FName("SorePoint")))
-                    {
-                        if (FIntProperty* IntProp = CastField<FIntProperty>(SoreProp)) FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
-                    }
-
-                    if (GEngine)
-                    {
-                        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::Printf(TEXT("【検証】渡した食材(%s)の内部データ -> 金額:%d, スコア:%d"), *HeldItem->GetName(), FoodMoney, FoodScore));
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop))
+                            FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
                     }
 
                     HeldItem->Destroy();
                     HeldItem = nullptr;
                     bIsItemSnapping = false;
 
-                    Customer->ReceiveFoodAndLeaveWithData(FoodMoney, FoodScore);
+                    Customer->ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
                 }
             }
         }
@@ -428,9 +385,6 @@ void UItemHoldComponent::PrimaryInteract()
             }
         }
     }
-    // ===============================================
-    // アイテムを持っていない時の処理（拾う・取り出す）
-    // ===============================================
     else
     {
         AActor* FoundSpawner = nullptr;

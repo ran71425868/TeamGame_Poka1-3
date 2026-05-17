@@ -49,21 +49,18 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
     AActor* TargetCounter;
 
-    // --- ここから追加・修正 ---
+    // 客が注文する料理の名前
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FName DesiredFoodTag;
 
-    // 1種類だけに統一したベースのお金BP（BP_Money）を設定する場所
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     TSubclassOf<AActor> BaseMoneyClass;
 
-    // 基本となる金額（例: 100）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     int32 BaseMoneyAmount;
 
-    // お金を出す高さ（机からどれくらい浮かすか）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float MoneySpawnZOffset;
-
-    // --- ここまで ---
 
     UPROPERTY(BlueprintAssignable, Category = "Event")
     FOnCustomerLeftDelegate OnCustomerLeft;
@@ -80,12 +77,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void StartPathMovementWithDelay(TArray<FVector> InPathPoints, FVector InExitLocation, float DelayTime);
 
-    // 【変更】第1引数をクラスではなく「PriceMultiplier（金額の倍率）」に変更しました
+    // 料理を受け取り、評価して帰る関数
     UFUNCTION(BlueprintCallable, Category = "Event")
-    void ReceiveFoodAndLeave(float PriceMultiplier, int32 EvaluationScore);
-
-    UFUNCTION(BlueprintCallable, Category = "Event")
-    void ReceiveFoodAndLeaveWithData(int32 FoodPrice, int32 FoodScore);
+    void ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore);
 
 private:
     UFUNCTION()

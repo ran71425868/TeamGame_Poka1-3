@@ -56,8 +56,7 @@ void ABobSpawner::TestMakeBobLeave()
     {
         if (ABobNPCCharacter* Bob = Cast<ABobNPCCharacter>(Actor))
         {
-            // yC³zˆø”‚ª•Ï‚í‚Á‚½‚Ì‚ÅAƒfƒoƒbƒO—p‚Æ‚µ‚Äu“™”{(1.0f)A•]‰¿0v‚ð“n‚·‚æ‚¤‚É•ÏX
-            Bob->ReceiveFoodAndLeave(1.0f, 0);
+            Bob->ReceiveFoodAndLeave(Bob->DesiredFoodTag, 1.0f, 0);
         }
     }
 }
