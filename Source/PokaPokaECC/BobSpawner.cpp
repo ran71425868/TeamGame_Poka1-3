@@ -35,9 +35,6 @@ void ABobSpawner::SpawnAndMoveBob()
 
     if (SpawnedBob)
     {
-        // yíœzSpawnedBob->TargetCounter = this->TargetCounter;
-        // ‚±‚ê‚ðÁ‚·‚±‚Æ‚ÅABob–{l‚ÌBeginPlay‚Å‚ÌŒŸõ‚É”C‚¹‚é‚æ‚¤‚É‚È‚è‚Ü‚·B
-
         SpawnedBob->OnCustomerLeft.AddDynamic(this, &ABobSpawner::SpawnAndMoveBob);
 
         TArray<FVector> WorldPathLocations;
@@ -59,7 +56,8 @@ void ABobSpawner::TestMakeBobLeave()
     {
         if (ABobNPCCharacter* Bob = Cast<ABobNPCCharacter>(Actor))
         {
-            Bob->ReceiveFoodAndLeave();
+            // yC³zˆø”‚ª•Ï‚í‚Á‚½‚Ì‚ÅAƒfƒoƒbƒO—p‚Æ‚µ‚Äu“™”{(1.0f)A•]‰¿0v‚ð“n‚·‚æ‚¤‚É•ÏX
+            Bob->ReceiveFoodAndLeave(1.0f, 0);
         }
     }
 }

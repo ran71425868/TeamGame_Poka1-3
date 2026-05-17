@@ -43,27 +43,27 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     FVector ExitLocation;
 
-    // ==========================================
-    // ここからが設定用の変数です
-    // ==========================================
-
-    // 【ここに入力！】探す机の名前（タグ）を文字で入力する場所
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FName TargetCounterTag;
 
-    // 見つけた机が自動で入る場所（ReadOnlyなのでエディタからは触れません）
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
     AActor* TargetCounter;
 
-    // 出すお金のBP
+    // --- ここから追加・修正 ---
+
+    // 1種類だけに統一したベースのお金BP（BP_Money）を設定する場所
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    TSubclassOf<AActor> MoneyClassToSpawn;
+    TSubclassOf<AActor> BaseMoneyClass;
+
+    // 基本となる金額（例: 100）
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    int32 BaseMoneyAmount;
 
     // お金を出す高さ（机からどれくらい浮かすか）
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float MoneySpawnZOffset;
 
-    // ==========================================
+    // --- ここまで ---
 
     UPROPERTY(BlueprintAssignable, Category = "Event")
     FOnCustomerLeftDelegate OnCustomerLeft;
@@ -80,8 +80,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void StartPathMovementWithDelay(TArray<FVector> InPathPoints, FVector InExitLocation, float DelayTime);
 
+    // 【変更】第1引数をクラスではなく「PriceMultiplier（金額の倍率）」に変更しました
     UFUNCTION(BlueprintCallable, Category = "Event")
-    void ReceiveFoodAndLeave();
+    void ReceiveFoodAndLeave(float PriceMultiplier, int32 EvaluationScore);
 
 private:
     UFUNCTION()

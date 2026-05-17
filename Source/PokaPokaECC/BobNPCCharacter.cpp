@@ -16,7 +16,10 @@ ABobNPCCharacter::ABobNPCCharacter()
 
     CurrentState = ECustomerState::MovingToShop;
     CurrentPathIndex = 0;
-    MoneySpawnZOffset = 100.0f; 
+
+    // 初期の基本設定
+    MoneySpawnZOffset = 100.0f;
+    BaseMoneyAmount = 100; // 基本を100円に設定
 }
 
 void ABobNPCCharacter::BeginPlay()
@@ -85,39 +88,53 @@ void ABobNPCCharacter::MoveToNextPathPoint()
     }
 }
 
-void ABobNPCCharacter::ReceiveFoodAndLeave()
+// 【変更】金額を割合（PriceMultiplier）で計算して、1つのお金BPの内部変数を書き換えます
+void ABobNPCCharacter::ReceiveFoodAndLeave(float PriceMultiplier, int32 EvaluationScore)
 {
     CurrentState = ECustomerState::Leaving;
 
-    if (MoneyClassToSpawn && TargetCounter)
+    if (BaseMoneyClass && TargetCounter)
     {
-        FVector BobLocation = GetActorLocation();
         FVector CounterLocation = TargetCounter->GetActorLocation();
-
+        // 確実にカウンターの真上に出す計算
         FVector SpawnLocation = CounterLocation + FVector(0.0f, 0.0f, MoneySpawnZOffset);
         FRotator SpawnRotation = TargetCounter->GetActorRotation();
 
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-        AActor* SpawnedMoney = GetWorld()->SpawnActor<AActor>(MoneyClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
+        // 共通のお金BPをスポーン
+        AActor* SpawnedMoney = GetWorld()->SpawnActor<AActor>(BaseMoneyClass, SpawnLocation, SpawnRotation, SpawnParams);
 
         if (SpawnedMoney)
         {
-            // 成功メッセージ（緑色）
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Bob: SUCCESS! Spawned Money!"));
+            // ① 割合（倍率）を掛け算して最終的な金額を計算（四捨五入して整数にする）
+            int32 FinalAmount = FMath::RoundToInt(BaseMoneyAmount * PriceMultiplier);
+
+            // ② スポーンしたお金のBPの中にある "Amount" という名前の変数（整数型）を探して、計算した金額を無理やり上書きする
+            if (FProperty* Property = SpawnedMoney->GetClass()->FindPropertyByName(TEXT("Amount")))
+            {
+                if (FIntProperty* IntProperty = CastField<FIntProperty>(Property))
+                {
+                    IntProperty->SetPropertyValue_InContainer(SpawnedMoney, FinalAmount);
+                }
+            }
+
+            // デバッグメッセージ（金額と倍率と評価を表示）
+            FString DebugMsg = FString::Printf(TEXT("Bob: SUCCESS! Spawned Money Val=[%d] (Multiplier: %.2f), Points=[%d]"), FinalAmount, PriceMultiplier, EvaluationScore);
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, DebugMsg);
+            UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
         }
     }
     else
     {
-        // 失敗メッセージ（赤色）
-        if (!MoneyClassToSpawn)
+        if (!BaseMoneyClass)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("Bob: ERROR! MoneyClassToSpawn is NONE!"));
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("Bob: ERROR! BaseMoneyClass is NONE!"));
         }
         if (!TargetCounter)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("Bob: ERROR! TargetCounter is NULL when receiving food!"));
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, TEXT("Bob: ERROR! TargetCounter is NULL!"));
         }
     }
 
