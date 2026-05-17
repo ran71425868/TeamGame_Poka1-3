@@ -7,6 +7,7 @@
 #include "CookingStation.h"
 #include "Engine/Engine.h"
 #include "UObject/UnrealType.h"
+#include "BobNPCCharacter.h"
 
 UItemHoldComponent::UItemHoldComponent()
 {
@@ -48,44 +49,44 @@ void UItemHoldComponent::BeginPlay()
 
 void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// 1. 手元への引き寄せ
-	if (bIsItemSnapping && HeldItem && OwnerCharacter)
-	{
-		FVector CurrentLoc = HeldItem->GetRootComponent()->GetRelativeLocation();
-		FRotator CurrentRot = HeldItem->GetRootComponent()->GetRelativeRotation();
+    // 1. 手元への引き寄せ
+    if (bIsItemSnapping && HeldItem && OwnerCharacter)
+    {
+        FVector CurrentLoc = HeldItem->GetRootComponent()->GetRelativeLocation();
+        FRotator CurrentRot = HeldItem->GetRootComponent()->GetRelativeRotation();
 
-		FVector NewLoc = FMath::VInterpTo(CurrentLoc, FVector::ZeroVector, DeltaTime, ItemSnapSpeed);
-		FRotator NewRot = FMath::RInterpTo(CurrentRot, FRotator::ZeroRotator, DeltaTime, ItemSnapSpeed);
+        FVector NewLoc = FMath::VInterpTo(CurrentLoc, FVector::ZeroVector, DeltaTime, ItemSnapSpeed);
+        FRotator NewRot = FMath::RInterpTo(CurrentRot, FRotator::ZeroRotator, DeltaTime, ItemSnapSpeed);
 
-		HeldItem->GetRootComponent()->SetRelativeLocationAndRotation(NewLoc, NewRot);
+        HeldItem->GetRootComponent()->SetRelativeLocationAndRotation(NewLoc, NewRot);
 
-		if (CurrentLoc.Equals(FVector::ZeroVector, 2.0f))
-		{
-			HeldItem->GetRootComponent()->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
-			bIsItemSnapping = false;
-		}
-	}
+        if (CurrentLoc.Equals(FVector::ZeroVector, 2.0f))
+        {
+            HeldItem->GetRootComponent()->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+            bIsItemSnapping = false;
+        }
+    }
 
-	// 2. 机への配置移動
-	if (bIsItemPlacing && PlacingItem)
-	{
-		FVector CurrentLoc = PlacingItem->GetActorLocation();
-		FRotator CurrentRot = PlacingItem->GetActorRotation();
+    // 2. 机への配置移動
+    if (bIsItemPlacing && PlacingItem)
+    {
+        FVector CurrentLoc = PlacingItem->GetActorLocation();
+        FRotator CurrentRot = PlacingItem->GetActorRotation();
 
-		FVector NewLoc = FMath::VInterpTo(CurrentLoc, PlaceTargetLocation, DeltaTime, ItemSnapSpeed);
-		FRotator NewRot = FMath::RInterpTo(CurrentRot, PlaceTargetRotation, DeltaTime, ItemSnapSpeed);
+        FVector NewLoc = FMath::VInterpTo(CurrentLoc, PlaceTargetLocation, DeltaTime, ItemSnapSpeed);
+        FRotator NewRot = FMath::RInterpTo(CurrentRot, PlaceTargetRotation, DeltaTime, ItemSnapSpeed);
 
-		PlacingItem->SetActorLocationAndRotation(NewLoc, NewRot);
+        PlacingItem->SetActorLocationAndRotation(NewLoc, NewRot);
 
-		if (CurrentLoc.Equals(PlaceTargetLocation, 2.0f))
-		{
-			PlacingItem->SetActorLocationAndRotation(PlaceTargetLocation, PlaceTargetRotation);
-			bIsItemPlacing = false;
-			PlacingItem = nullptr;
-		}
-	}
+        if (CurrentLoc.Equals(PlaceTargetLocation, 2.0f))
+        {
+            PlacingItem->SetActorLocationAndRotation(PlaceTargetLocation, PlaceTargetRotation);
+            bIsItemPlacing = false;
+            PlacingItem = nullptr;
+        }
+    }
     // 毎フレーム、グリッドのハイライト位置を更新
     UpdateGridHighlight();
 
@@ -96,7 +97,6 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
     {
         FVector PlayerLoc = OwnerCharacter->GetActorLocation();
 
-        // 変数で設定した範囲の磁石判定を作る
         FCollisionShape MagnetSphere = FCollisionShape::MakeSphere(MagnetRadius);
         TArray<FOverlapResult> MagnetOverlaps;
         FCollisionQueryParams MagnetParams;
@@ -107,45 +107,37 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         for (const FOverlapResult& Overlap : MagnetOverlaps)
         {
             AActor* HitActor = Overlap.GetActor();
-            // 見つけたアクターが「Money」タグを持っているか
             if (HitActor && HitActor->ActorHasTag("Money"))
             {
-                // プレイヤーとお金の現在の距離を測る
                 float Distance = FVector::Dist(PlayerLoc, HitActor->GetActorLocation());
 
                 if (Distance <= CollectionDistance)
                 {
-                    // デフォルト値を0で用意
                     int32 CollectedMoney = 0;
                     int32 CollectedScore = 0;
 
-                    // ★C++のリフレクションを使い、BP側の「MoneyAmount」という変数を安全に取得する
                     if (FProperty* MoneyProp = HitActor->GetClass()->FindPropertyByName(FName("MoneyAmount")))
                     {
                         if (FIntProperty* IntProp = CastField<FIntProperty>(MoneyProp))
-                        {
                             CollectedMoney = IntProp->GetPropertyValue_InContainer(HitActor);
-                        }
                     }
-
-                    // ★同じく、BP側の「SorePoint」という変数を安全に取得する
                     if (FProperty* ScoreProp = HitActor->GetClass()->FindPropertyByName(FName("ScorePoint")))
                     {
                         if (FIntProperty* IntProp = CastField<FIntProperty>(ScoreProp))
-                        {
                             CollectedScore = IntProp->GetPropertyValue_InContainer(HitActor);
-                        }
                     }
 
-                    // 取得した動的な値をイベントに渡してブループリントへ通知！
+                    // 取得した動的な値をイベントに渡してブループリントへ通知
                     OnMoneyCollected.Broadcast(CollectedMoney, CollectedScore);
 
+                    // ★追加：合計変数に加算する！
+                    TotalCollectedMoney += CollectedMoney;
+                    TotalCollectedScore += CollectedScore;
+
                     HitActor->Destroy();
-                    if (GEngine)
-                    {
-                        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("マグネット回収！ マネー: %d, スコア: %d"), CollectedMoney, CollectedScore));
-                    }
-                    UE_LOG(LogTemp, Warning, TEXT("マグネットでお金を回収しました！獲得マネー: %d, 獲得スコア: %d"), CollectedMoney, CollectedScore);
+
+                    // 回収した瞬間のログ出力（コンソール用）
+                    UE_LOG(LogTemp, Warning, TEXT("マネー回収！ 獲得:%d, スコア:%d | 合計お金:%d, 合計スコア:%d"), CollectedMoney, CollectedScore, TotalCollectedMoney, TotalCollectedScore);
                 }
                 else
                 {
@@ -155,6 +147,17 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
                 }
             }
         }
+    }
+
+    // ==========================================
+    // 【常時表示UI用】 デバッグメッセージの固定表示
+    // ==========================================
+    if (GEngine)
+    {
+        // 第1引数（Key）を「100」「101」など固定の数値にすると、毎フレーム上書きされ常時表示HUDのようになります
+        // 第2引数（Duration）を「0.0f」にすることで、1フレームだけ表示＝毎フレーム更新されます
+        GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
+        GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
     }
 }
 
@@ -247,6 +250,9 @@ void UItemHoldComponent::PrimaryInteract()
 {
     if (!OwnerCharacter) return;
 
+    // 【デバッグ①】そもそもこの関数が呼ばれているか？（インタラクトキーが効いているか）
+    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("[Debug] PrimaryInteract Called!"));
+
     FVector Start = OwnerCharacter->GetActorLocation();
     FVector Forward = OwnerCharacter->GetActorForwardVector();
     FVector OverlapCenter = Start + (Forward * (InteractDistance * 0.6f));
@@ -263,20 +269,30 @@ void UItemHoldComponent::PrimaryInteract()
     TArray<FOverlapResult> Overlaps;
     GetWorld()->OverlapMultiByChannel(Overlaps, OverlapCenter, FQuat::Identity, ECC_Visibility, Sphere, Params);
 
+    // ===============================================
+    // アイテムを持っている時の処理（置く・渡す）
+    // ===============================================
     if (HeldItem)
     {
-        AActor* FoundCounter = nullptr;
-        AActor* FoundTrashCan = nullptr; 
-        AActor* FoundCookingStation = nullptr;
+        // 【デバッグ②】アイテムを持っていると認識されているか？
+        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Orange, FString::Printf(TEXT("[Debug] Holding Item: %s"), *HeldItem->GetName()));
 
-        // 目の前に何があるか探す
+        AActor* FoundCounter = nullptr;
+        AActor* FoundTrashCan = nullptr;
+        AActor* FoundCookingStation = nullptr;
+        AActor* FoundCustomer = nullptr;
+
         for (const FOverlapResult& Overlap : Overlaps)
         {
             AActor* HitActor = Overlap.GetActor();
             if (HitActor)
             {
+                // ※もし目の前のアクターが全く検知されていない場合は、ここのコメントアウトを外すと当たっている全アクター名が表示されます
+                if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::White, FString::Printf(TEXT("[Hit] %s"), *HitActor->GetName()));
+
                 if (HitActor->ActorHasTag("TrashCan")) { FoundTrashCan = HitActor; break; }
-                else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; } // 【追加】
+                else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; }
+                else if (HitActor->ActorHasTag("Customer")) { FoundCustomer = HitActor; break; }
                 else if (HitActor->ActorHasTag("Counter")) { FoundCounter = HitActor; break; }
             }
         }
@@ -287,56 +303,88 @@ void UItemHoldComponent::PrimaryInteract()
             HeldItem = nullptr;
             bIsItemSnapping = false;
         }
-        else if (FoundCookingStation) // 【追加】コンロ等にアイテムをセットする処理
+        else if (FoundCookingStation)
         {
             ACookingStation* Station = Cast<ACookingStation>(FoundCookingStation);
-            // StationのPlaceItem関数を呼び出し、成功したら手持ちを空にする
             if (Station && Station->PlaceItem(HeldItem))
             {
                 if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                 {
                     PrimComp->SetSimulatePhysics(false);
-                    PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 調理中は触れなくする
+                    PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
                 }
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
             }
         }
-        // カウンターに対する処理（先ほど作った重複チェック入り）
+        else if (FoundCustomer)
+        {
+            // 【デバッグ③】「Customer」タグを持つアクターを検知できたか？
+            if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("[Debug] Found Customer Actor!"));
+
+            ABobNPCCharacter* Customer = Cast<ABobNPCCharacter>(FoundCustomer);
+            if (Customer)
+            {
+                // 【デバッグ④】お客さんの現在の状態は何か？
+                FString StateStr = (Customer->CurrentState == ECustomerState::Waiting) ? TEXT("Waiting") : TEXT("NOT Waiting");
+                if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta, FString::Printf(TEXT("[Debug] Customer State is: %s"), *StateStr));
+
+                if (Customer->CurrentState == ECustomerState::Waiting)
+                {
+                    int32 FoodMoney = -1;
+                    int32 FoodScore = -1;
+
+                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("MoneyAmount")))
+                    {
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop)) FoodMoney = IntProp->GetPropertyValue_InContainer(HeldItem);
+                    }
+                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ScorePoint")))
+                    {
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop)) FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
+                    }
+                    else if (FProperty* SoreProp = HeldItem->GetClass()->FindPropertyByName(FName("SorePoint")))
+                    {
+                        if (FIntProperty* IntProp = CastField<FIntProperty>(SoreProp)) FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
+                    }
+
+                    if (GEngine)
+                    {
+                        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::Printf(TEXT("【検証】渡した食材(%s)の内部データ -> 金額:%d, スコア:%d"), *HeldItem->GetName(), FoodMoney, FoodScore));
+                    }
+
+                    HeldItem->Destroy();
+                    HeldItem = nullptr;
+                    bIsItemSnapping = false;
+
+                    Customer->ReceiveFoodAndLeaveWithData(FoodMoney, FoodScore);
+                }
+            }
+        }
         else if (FoundCounter)
         {
-            // 置く予定の座標を計算
             FVector TargetLoc = FoundCounter->GetActorLocation() + FVector(0.0f, 0.0f, 90.0f);
-
-            // 置く場所にすでにアイテムがないかチェックする
-            FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f); // チェック用の小さな球
+            FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f);
             FCollisionQueryParams CheckParams;
-            CheckParams.AddIgnoredActor(OwnerCharacter); // 自分は無視
-            CheckParams.AddIgnoredActor(HeldItem);       // 今手に持っているアイテムも無視
+            CheckParams.AddIgnoredActor(OwnerCharacter);
+            CheckParams.AddIgnoredActor(HeldItem);
 
-            bool bIsOccupied = false; // すでに場所が埋まっているかのフラグ
+            bool bIsOccupied = false;
             TArray<FOverlapResult> CheckOverlaps;
             GetWorld()->OverlapMultiByChannel(CheckOverlaps, TargetLoc, FQuat::Identity, ECC_Visibility, CheckSphere, CheckParams);
 
-            // 置く予定の場所に何かあったら、それがアイテムか確認
             for (const FOverlapResult& Overlap : CheckOverlaps)
             {
                 if (Overlap.GetActor() && Overlap.GetActor()->ActorHasTag("Holdable"))
                 {
-                    bIsOccupied = true; // アイテムがあった！
+                    bIsOccupied = true;
                     break;
                 }
             }
 
-            // もしすでにアイテムが置かれていたら、ここで処理を中断（置かない）
-            if (bIsOccupied)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("ここにはすでにアイテムが置かれています！"));
-                return;
-            }
+            if (bIsOccupied) return;
 
             HeldItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-            PlaceTargetLocation = FoundCounter->GetActorLocation() + FVector(0.0f, 0.0f, 90.0f);
+            PlaceTargetLocation = TargetLoc;
             PlaceTargetRotation = FRotator::ZeroRotator;
             if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
             {
@@ -350,15 +398,11 @@ void UItemHoldComponent::PrimaryInteract()
         }
         else
         {
-            // 何もない空間の場合、Tickで計算済みの座標（bCanPlaceOnGrid）を使って配置する
             if (bCanPlaceOnGrid)
             {
                 HeldItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-
-                // Tickでハイライト用に計算した座標と回転をそのまま配置先に使う
                 PlaceTargetLocation = CurrentGridTargetLocation;
                 PlaceTargetRotation = CurrentGridTargetRotation;
-
                 if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                 {
                     PrimComp->SetSimulatePhysics(false);
@@ -371,7 +415,6 @@ void UItemHoldComponent::PrimaryInteract()
             }
             else
             {
-                // 床が見つからなかった場合（空中など）は「投げる」
                 HeldItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
                 if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                 {
@@ -385,63 +428,35 @@ void UItemHoldComponent::PrimaryInteract()
             }
         }
     }
+    // ===============================================
+    // アイテムを持っていない時の処理（拾う・取り出す）
+    // ===============================================
     else
     {
+        AActor* FoundSpawner = nullptr;
+        AActor* FoundCookingStation = nullptr;
+        AActor* FoundHoldable = nullptr;
+
         for (const FOverlapResult& Overlap : Overlaps)
         {
             AActor* HitActor = Overlap.GetActor();
             if (HitActor)
             {
-                if (HitActor->ActorHasTag("Spawner"))
+                if (HitActor->ActorHasTag("Spawner")) { FoundSpawner = HitActor; }
+                else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; }
+                else if (HitActor->ActorHasTag("Holdable")) { FoundHoldable = HitActor; }
+            }
+        }
+
+        if (FoundCookingStation)
+        {
+            ACookingStation* Station = Cast<ACookingStation>(FoundCookingStation);
+            if (Station)
+            {
+                AActor* RetrievedItem = Station->RetrieveItem();
+                if (RetrievedItem)
                 {
-                    AItemSpawner* Spawner = Cast<AItemSpawner>(HitActor);
-                    if (Spawner)
-                    {
-                        AActor* SpawnedItem = Spawner->SpawnItem();
-                        if (SpawnedItem)
-                        {
-                            HeldItem = SpawnedItem;
-                            if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
-                            {
-                                PrimComp->SetSimulatePhysics(false);
-                                PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-                            }
-                            HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
-                            bIsItemSnapping = true;
-                            break;
-                        }
-                    }
-                }
-                else if (HitActor->ActorHasTag("CookingStation")) // 【追加】コンロ等から完成品を取り出す処理
-                {
-                    ACookingStation* Station = Cast<ACookingStation>(HitActor);
-                    if (Station)
-                    {
-                        // 器具からアイテムを取り出す（生焼けの場合はnullptrが返ってくる）
-                        AActor* RetrievedItem = Station->RetrieveItem();
-                        if (RetrievedItem)
-                        {
-                            HeldItem = RetrievedItem; // 取り出したものを手に持つ
-                            if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
-                            {
-                                PrimComp->SetSimulatePhysics(false);
-                                PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-                            }
-                            HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
-                            bIsItemSnapping = true;
-                            break;
-                        }
-                    }
-                }
-                // 2. 目の前のオブジェクトが「置かれているアイテム」だった場合
-                else if (HitActor->ActorHasTag("Holdable"))
-                {
-                    if (HitActor == PlacingItem)
-                    {
-                        bIsItemPlacing = false;
-                        PlacingItem = nullptr;
-                    }
-                    HeldItem = HitActor;
+                    HeldItem = RetrievedItem;
                     if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
                     {
                         PrimComp->SetSimulatePhysics(false);
@@ -449,9 +464,69 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
-                    break; // 処理を完了してループを抜ける
+                    return;
                 }
             }
+        }
+
+        if (FoundSpawner)
+        {
+            AItemSpawner* Spawner = Cast<AItemSpawner>(FoundSpawner);
+            if (Spawner)
+            {
+                AActor* SpawnedItem = Spawner->SpawnItem();
+                if (SpawnedItem)
+                {
+                    HeldItem = SpawnedItem;
+                    if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
+                    {
+                        PrimComp->SetSimulatePhysics(false);
+                        PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                    }
+                    HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
+                    bIsItemSnapping = true;
+                    return;
+                }
+            }
+        }
+
+        if (FoundHoldable)
+        {
+            AActor* ParentActor = FoundHoldable->GetAttachParentActor();
+            if (ParentActor && ParentActor->ActorHasTag("CookingStation"))
+            {
+                ACookingStation* Station = Cast<ACookingStation>(ParentActor);
+                if (Station)
+                {
+                    AActor* RetrievedItem = Station->RetrieveItem();
+                    if (RetrievedItem)
+                    {
+                        HeldItem = RetrievedItem;
+                        if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
+                        {
+                            PrimComp->SetSimulatePhysics(false);
+                            PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                        }
+                        HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
+                        bIsItemSnapping = true;
+                        return;
+                    }
+                }
+            }
+
+            if (FoundHoldable == PlacingItem)
+            {
+                bIsItemPlacing = false;
+                PlacingItem = nullptr;
+            }
+            HeldItem = FoundHoldable;
+            if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(HeldItem->GetRootComponent()))
+            {
+                PrimComp->SetSimulatePhysics(false);
+                PrimComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            }
+            HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
+            bIsItemSnapping = true;
         }
     }
 }

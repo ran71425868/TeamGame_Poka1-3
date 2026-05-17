@@ -68,6 +68,13 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "ItemHold|Events")
 	FOnMoneyCollectedDelegate OnMoneyCollected;
 
+	// 統計情報（回収したお金とスコアの合計）
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stats")
+	int32 TotalCollectedMoney = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stats")
+	int32 TotalCollectedScore = 0;
+
 private:
 	// 内部状態
 	UPROPERTY()

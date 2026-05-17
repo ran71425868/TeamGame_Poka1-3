@@ -84,6 +84,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Event")
     void ReceiveFoodAndLeave(float PriceMultiplier, int32 EvaluationScore);
 
+    UFUNCTION(BlueprintCallable, Category = "Event")
+    void ReceiveFoodAndLeaveWithData(int32 FoodPrice, int32 FoodScore);
+
 private:
     UFUNCTION()
     void ExecutePathMovement();
