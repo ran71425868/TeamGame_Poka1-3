@@ -5,6 +5,8 @@
 #include "ItemSpawner.h"
 #include "ItemHoldComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMoneyCollectedDelegate, int32, MoneyAmount, int32, ScoreAmount);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class POKAPOKAECC_API UItemHoldComponent : public UActorComponent
 {
@@ -49,6 +51,22 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
 	UMaterialInterface* HighlightMaterial;
+
+	// マグネットが反応する範囲（半径cm）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Magnet")
+	float MagnetRadius = 300.0f;
+
+	// お金がプレイヤーに飛んでくるスピード
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Magnet")
+	float MagnetSpeed = 10.0f;
+
+	// お金を「回収した」と判定するプレイヤーとの距離（cm）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Magnet")
+	float CollectionDistance = 70.0f;
+
+	// お金を回収した時にブループリント側で所持金やスコアを増やすためのイベント
+	UPROPERTY(BlueprintAssignable, Category = "ItemHold|Events")
+	FOnMoneyCollectedDelegate OnMoneyCollected;
 
 private:
 	// 内部状態
