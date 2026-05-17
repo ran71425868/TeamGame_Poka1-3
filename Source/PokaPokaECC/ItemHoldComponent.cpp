@@ -218,8 +218,6 @@ void UItemHoldComponent::PrimaryInteract()
 {
     if (!OwnerCharacter) return;
 
-    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Yellow, TEXT("[Debug] PrimaryInteract Called!"));
-
     FVector Start = OwnerCharacter->GetActorLocation();
     FVector Forward = OwnerCharacter->GetActorForwardVector();
     FVector OverlapCenter = Start + (Forward * (InteractDistance * 0.6f));
@@ -238,8 +236,6 @@ void UItemHoldComponent::PrimaryInteract()
 
     if (HeldItem)
     {
-        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Orange, FString::Printf(TEXT("[Debug] Holding Item: %s"), *HeldItem->GetName()));
-
         AActor* FoundCounter = nullptr;
         AActor* FoundTrashCan = nullptr;
         AActor* FoundCookingStation = nullptr;
@@ -279,41 +275,49 @@ void UItemHoldComponent::PrimaryInteract()
         }
         else if (FoundCustomer)
         {
-            if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("[Debug] Found Customer Actor!"));
-
             ABobNPCCharacter* Customer = Cast<ABobNPCCharacter>(FoundCustomer);
-            if (Customer)
+            if (Customer && Customer->CurrentState == ECustomerState::Waiting)
             {
-                FString StateStr = (Customer->CurrentState == ECustomerState::Waiting) ? TEXT("Waiting") : TEXT("NOT Waiting");
-                if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta, FString::Printf(TEXT("[Debug] Customer State is: %s"), *StateStr));
+                FName FoodTag = NAME_None;
+                float PriceMult = 1.0f;
+                int32 FoodScore = 0;
 
-                if (Customer->CurrentState == ECustomerState::Waiting)
+                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ProvidedFoodTag")))
                 {
-                    FName FoodTag = NAME_None;
-                    float PriceMult = 1.0f;
-                    int32 FoodScore = 0;
+                    if (FNameProperty* NameProp = CastField<FNameProperty>(Prop))
+                        FoodTag = NameProp->GetPropertyValue_InContainer(HeldItem);
+                }
+                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("PriceMultiplier")))
+                {
+                    if (FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
+                        PriceMult = FloatProp->GetPropertyValue_InContainer(HeldItem);
+                }
+                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ScorePoint")))
+                {
+                    if (FIntProperty* IntProp = CastField<FIntProperty>(Prop))
+                        FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
+                }
 
-                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ProvidedFoodTag")))
+                HeldItem->Destroy();
+                HeldItem = nullptr;
+                bIsItemSnapping = false;
+
+                // ★ここで結果（true/false）を受け取る！
+                bool bIsCorrectFood = Customer->ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
+
+                // ★間違っていた場合のペナルティ処理
+                if (!bIsCorrectFood)
+                {
+                    int32 PenaltyPoint = 10; // ← 減らすポイントはここで自由に調整してください！
+                    TotalCollectedScore -= PenaltyPoint;
+
+                    // スコアをマイナス（0未満）にしたくない場合は 0 で止める
+                    if (TotalCollectedScore < 0)
                     {
-                        if (FNameProperty* NameProp = CastField<FNameProperty>(Prop))
-                            FoodTag = NameProp->GetPropertyValue_InContainer(HeldItem);
-                    }
-                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("PriceMultiplier")))
-                    {
-                        if (FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
-                            PriceMult = FloatProp->GetPropertyValue_InContainer(HeldItem);
-                    }
-                    if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ScorePoint")))
-                    {
-                        if (FIntProperty* IntProp = CastField<FIntProperty>(Prop))
-                            FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
+                        TotalCollectedScore = 0;
                     }
 
-                    HeldItem->Destroy();
-                    HeldItem = nullptr;
-                    bIsItemSnapping = false;
-
-                    Customer->ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
+                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("【ペナルティ】間違った料理を出した！ 評価が %d 下がった！"), PenaltyPoint));
                 }
             }
         }

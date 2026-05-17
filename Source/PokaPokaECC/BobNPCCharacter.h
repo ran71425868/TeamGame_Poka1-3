@@ -49,7 +49,6 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
     AActor* TargetCounter;
 
-    // 客が注文する料理の名前
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FName DesiredFoodTag;
 
@@ -77,9 +76,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void StartPathMovementWithDelay(TArray<FVector> InPathPoints, FVector InExitLocation, float DelayTime);
 
-    // 料理を受け取り、評価して帰る関数
+    // 【変更】戻り値を bool にしました
     UFUNCTION(BlueprintCallable, Category = "Event")
-    void ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore);
+    bool ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore);
 
 private:
     UFUNCTION()

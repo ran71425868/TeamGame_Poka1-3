@@ -95,7 +95,8 @@ void ABobNPCCharacter::MoveToNextPathPoint()
     }
 }
 
-void ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore)
+// ÅyïœçXÅzñﬂÇËílÇ bool Ç…ÇµÇ‹ÇµÇΩ
+bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore)
 {
     CurrentState = ECustomerState::Leaving;
 
@@ -106,7 +107,7 @@ void ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
         UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
 
         MoveToDestination(ExitLocation);
-        return;
+        return false; // Åyí«â¡Åzé∏îsÇµÇΩÇ±Ç∆ÇÉvÉåÉCÉÑÅ[Ç…ì`Ç¶ÇÈ
     }
 
     if (BaseMoneyClass && TargetCounter)
@@ -150,6 +151,7 @@ void ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
     }
 
     MoveToDestination(ExitLocation);
+    return true; // Åyí«â¡Åzê¨å˜ÇµÇΩÇ±Ç∆ÇÉvÉåÉCÉÑÅ[Ç…ì`Ç¶ÇÈ
 }
 
 void ABobNPCCharacter::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
