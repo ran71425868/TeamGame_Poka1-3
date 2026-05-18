@@ -8,6 +8,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UInputAction;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -40,6 +41,16 @@ protected:
 	UPROPERTY(EditAnywhere, Config, Category = "Input|Touch Controls")
 	bool bForceTouchControls = false;
 
+	/// Input Action for pausing the game
+	UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
+	UInputAction* PauseAction;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUserWidget> PauseMenuWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> PauseMenuWidgetInstance;
+
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -49,4 +60,6 @@ protected:
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
 
+	/// Toggles the pause menu on or off
+	void TogglePauseMenu();
 };
