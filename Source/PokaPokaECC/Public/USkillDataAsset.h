@@ -37,6 +37,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
     float ModifierValue;
 
+    // --- ショップ用の設定 ---
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill|Shop")
+    int32 Price = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill|Shop")
+    bool bIsShopExclusive = false;
+
     // DataAssetをAssetManagerで管理する場合に推奨されるオーバーライド
     virtual FPrimaryAssetId GetPrimaryAssetId() const override
     {
