@@ -44,6 +44,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings")
 	TSubclassOf<AActor> BurntItemClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings")
+	FName AcceptedItemTag;
+
+	// この器具に同時における最大数
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings", meta = (ClampMin = "1", ClampMax = "2"))
+	int32 MaxCapacity;
+
 	// --- 【変更】状態管理とタイマーを2つに増やす ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking State")
 	ECookingState CurrentState1;
