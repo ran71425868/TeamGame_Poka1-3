@@ -6,6 +6,7 @@
 #include "BobNPCCharacter.generated.h"
 
 class UAnimMontage;
+class UBoxComponent; // 【追加】箱の判定を使うための宣言
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCustomerLeftDelegate);
 
@@ -61,6 +62,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float MoneySpawnZOffset;
 
+    // 【追加】客の目の前に付ける「受け取り判定」
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
+    UBoxComponent* ReceiveArea;
+
     UPROPERTY(BlueprintAssignable, Category = "Event")
     FOnCustomerLeftDelegate OnCustomerLeft;
 
@@ -76,9 +81,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void StartPathMovementWithDelay(TArray<FVector> InPathPoints, FVector InExitLocation, float DelayTime);
 
-    // 【変更】戻り値を bool にしました
     UFUNCTION(BlueprintCallable, Category = "Event")
     bool ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore);
+
+    // 【追加】判定エリアにアイテムが入ってきた時に呼ばれる関数
+    UFUNCTION()
+    void OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
     UFUNCTION()
