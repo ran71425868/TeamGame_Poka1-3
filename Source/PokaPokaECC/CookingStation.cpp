@@ -1,4 +1,4 @@
-#include "CookingStation.h"
+ï»¿#include "CookingStation.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 
@@ -9,12 +9,12 @@ ACookingStation::ACookingStation()
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	RootComponent = StationMesh;
 
-	// ƒ\ƒPƒbƒg1i¶—pj‚Ìì¬
+	// ã‚½ã‚±ãƒƒãƒˆ1ï¼ˆå·¦ç”¨ï¼‰ã®ä½œæˆ
 	ItemSocket1 = CreateDefaultSubobject<USceneComponent>(TEXT("ItemSocket1"));
 	ItemSocket1->SetupAttachment(RootComponent);
 	ItemSocket1->SetRelativeLocation(FVector(0.0f, -30.0f, 50.0f));
 
-	// ƒ\ƒPƒbƒg2i‰E—pj‚Ìì¬
+	// ã‚½ã‚±ãƒƒãƒˆ2ï¼ˆå³ç”¨ï¼‰ã®ä½œæˆ
 	ItemSocket2 = CreateDefaultSubobject<USceneComponent>(TEXT("ItemSocket2"));
 	ItemSocket2->SetupAttachment(RootComponent);
 	ItemSocket2->SetRelativeLocation(FVector(0.0f, 30.0f, 50.0f));
@@ -23,6 +23,7 @@ ACookingStation::ACookingStation()
 
 	CookTime = 5.0f;
 	BurnTime = 5.0f;
+	MaxCapacity = 2;
 
 	CurrentState1 = ECookingState::Empty;
 	CurrentState2 = ECookingState::Empty;
@@ -30,12 +31,35 @@ ACookingStation::ACookingStation()
 	CurrentItem2 = nullptr;
 }
 
-// HŞ‚ğ’u‚­ˆ—
+// é£Ÿæã‚’ç½®ãå‡¦ç†
 bool ACookingStation::PlaceItem(AActor* ItemToPlace)
 {
 	if (ItemToPlace == nullptr) return false;
 
-	// ‚Ü‚¸¶iƒ\ƒPƒbƒg1j‚ª‹ó‚¢‚Ä‚¢‚é‚©ƒ`ƒFƒbƒNI
+	// ï¼ˆAcceptedItemTag ãŒç©ºæ¬„ "None" ã®å ´åˆã¯ã€ä»Šã¾ã§é€šã‚Šä½•ã§ã‚‚ç½®ã‘ã‚‹ä»•æ§˜ã«ã—ã¦ãŠãã¾ã™ï¼‰
+	if (!AcceptedItemTag.IsNone() && !ItemToPlace->ActorHasTag(AcceptedItemTag))
+	{
+		// ãƒ‡ãƒãƒƒã‚°å¼·åŒ–ï¼šä½•ãŒåŸå› ã§å¼¾ã‹ã‚ŒãŸã®ã‹ã‚’ç”»é¢ã«è©³ç´°ã«å‡ºåŠ›ã™ã‚‹
+		FString ExpectedTag = AcceptedItemTag.ToString();
+		FString ItemName = ItemToPlace->GetName();
+
+		// ã‚¢ã‚¤ãƒ†ãƒ ãŒå®Ÿéš›ã«æŒã£ã¦ã„ã‚‹ã™ã¹ã¦ã®ã‚¿ã‚°ã‚’å–å¾—ã—ã¦æ–‡å­—ã«ã™ã‚‹
+		FString AllTags = TEXT("");
+		for (const FName& Tag : ItemToPlace->Tags)
+		{
+			AllTags += Tag.ToString() + TEXT(", ");
+		}
+		if (AllTags.IsEmpty()) AllTags = TEXT("ã‚¿ã‚°ãªã—(None)");
+
+		// ç”»é¢ã«è¡¨ç¤ºã™ã‚‹ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’ä½œã‚‹
+		FString DebugMsg = FString::Printf(TEXT("ã€ã‚¨ãƒ©ãƒ¼ã€‘è¦æ±‚:[%s] | ã‚¢ã‚¤ãƒ†ãƒ :[%s] | æ‰€æŒã‚¿ã‚°:[%s] "), *ExpectedTag, *ItemName, *AllTags);
+
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, DebugMsg);
+
+		return false;
+	}
+
+	// ã¾ãšå·¦ï¼ˆã‚½ã‚±ãƒƒãƒˆ1ï¼‰ãŒç©ºã„ã¦ã„ã‚‹ã‹ãƒã‚§ãƒƒã‚¯ï¼
 	if (CurrentState1 == ECookingState::Empty)
 	{
 		CurrentItem1 = ItemToPlace;
@@ -45,8 +69,8 @@ bool ACookingStation::PlaceItem(AActor* ItemToPlace)
 		GetWorldTimerManager().SetTimer(CookingTimerHandle1, this, &ACookingStation::OnCookingFinished1, CookTime, false);
 		return true;
 	}
-	// ¶‚ª–„‚Ü‚Á‚Ä‚¢‚½‚çA‰Eiƒ\ƒPƒbƒg2j‚ª‹ó‚¢‚Ä‚¢‚é‚©ƒ`ƒFƒbƒNI
-	else if (CurrentState2 == ECookingState::Empty)
+	// å·¦ãŒåŸ‹ã¾ã£ã¦ã„ãŸã‚‰ã€å³ï¼ˆã‚½ã‚±ãƒƒãƒˆ2ï¼‰ãŒç©ºã„ã¦ã„ã‚‹ã‹ãƒã‚§ãƒƒã‚¯ï¼
+	else if (MaxCapacity >= 2 && CurrentState2 == ECookingState::Empty) 
 	{
 		CurrentItem2 = ItemToPlace;
 		CurrentItem2->SetActorLocationAndRotation(ItemSocket2->GetComponentLocation(), ItemSocket2->GetComponentRotation());
@@ -56,11 +80,11 @@ bool ACookingStation::PlaceItem(AActor* ItemToPlace)
 		return true;
 	}
 
-	// —¼•û–„‚Ü‚Á‚Ä‚¢‚éê‡‚Í’u‚¯‚È‚¢
+	// ä¸¡æ–¹åŸ‹ã¾ã£ã¦ã„ã‚‹å ´åˆã¯ç½®ã‘ãªã„
 	return false;
 }
 
-// --- ƒ\ƒPƒbƒg1‚Ìƒ^ƒCƒ}[ˆ— ---
+// --- ã‚½ã‚±ãƒƒãƒˆ1ã®ã‚¿ã‚¤ãƒãƒ¼å‡¦ç† ---
 void ACookingStation::OnCookingFinished1()
 {
 	if (CurrentItem1) CurrentItem1->Destroy();
@@ -84,7 +108,7 @@ void ACookingStation::OnBurnt1()
 	CurrentState1 = ECookingState::Burnt;
 }
 
-// --- ƒ\ƒPƒbƒg2‚Ìƒ^ƒCƒ}[ˆ— ---
+// --- ã‚½ã‚±ãƒƒãƒˆ2ã®ã‚¿ã‚¤ãƒãƒ¼å‡¦ç† ---
 void ACookingStation::OnCookingFinished2()
 {
 	if (CurrentItem2) CurrentItem2->Destroy();
@@ -108,10 +132,10 @@ void ACookingStation::OnBurnt2()
 	CurrentState2 = ECookingState::Burnt;
 }
 
-// HŞ‚ğæ‚èo‚·ˆ—
+// é£Ÿæã‚’å–ã‚Šå‡ºã™å‡¦ç†
 AActor* ACookingStation::RetrieveItem()
 {
-	// 1. ‚Ü‚¸uŠ®¬•iiDonejv‚ğ—Dæ‚µ‚Ä’T‚·
+	// 1. ã¾ãšã€Œå®Œæˆå“ï¼ˆDoneï¼‰ã€ã‚’å„ªå…ˆã—ã¦æ¢ã™
 	if (CurrentState1 == ECookingState::Done)
 	{
 		AActor* ItemToReturn = CurrentItem1;
@@ -129,7 +153,7 @@ AActor* ACookingStation::RetrieveItem()
 		return ItemToReturn;
 	}
 
-	// 2. Š®¬•i‚ª‚È‚¯‚ê‚ÎuÅ‚°‚½‚à‚ÌiBurntjv‚ğ’T‚·
+	// 2. å®Œæˆå“ãŒãªã‘ã‚Œã°ã€Œç„¦ã’ãŸã‚‚ã®ï¼ˆBurntï¼‰ã€ã‚’æ¢ã™
 	if (CurrentState1 == ECookingState::Burnt)
 	{
 		AActor* ItemToReturn = CurrentItem1;
@@ -145,6 +169,6 @@ AActor* ACookingStation::RetrieveItem()
 		return ItemToReturn;
 	}
 
-	// ‚Ç‚¿‚ç‚à’²—’†‚â‹ó‚Á‚Û‚È‚ç‰½‚àæ‚èo‚¹‚È‚¢
+	// ã©ã¡ã‚‰ã‚‚èª¿ç†ä¸­ã‚„ç©ºã£ã½ãªã‚‰ä½•ã‚‚å–ã‚Šå‡ºã›ãªã„
 	return nullptr;
 }

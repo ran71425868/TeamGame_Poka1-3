@@ -142,6 +142,28 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
         GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
     }
+
+    // ==========================================
+    // 【常時表示UI用】 デバッグメッセージの固定表示
+    // ==========================================
+    if (GEngine)
+    {
+        // 第1引数（Key）を固定の数値にすることで、毎フレーム上書きされ常時表示HUDのようになります
+        GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
+        GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
+
+        // ★追加：現在持っているアイテムの表示（Keyを102にする）
+        if (HeldItem)
+        {
+            // アイテムを持っている時は緑色でアイテム名を表示
+            GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::Green, FString::Printf(TEXT("★ [Held Item] : %s"), *HeldItem->GetName()));
+        }
+        else
+        {
+            // 何も持っていない時は白色で「なし」と表示
+            GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::White, TEXT("★ [Held Item] : なし"));
+        }
+    }
 }
 
 void UItemHoldComponent::UpdateGridHighlight()
