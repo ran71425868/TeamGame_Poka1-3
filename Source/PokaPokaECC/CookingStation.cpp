@@ -3,6 +3,8 @@
 #include "Engine/World.h"
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 ACookingStation::ACookingStation()
 {
@@ -40,6 +42,14 @@ ACookingStation::ACookingStation()
 	CurrentState2 = ECookingState::Empty;
 	CurrentItem1 = nullptr;
 	CurrentItem2 = nullptr;
+
+	SpawnedEffect1 = nullptr;
+	SpawnedEffect2 = nullptr;
+
+	
+	EffectScale = FVector(1.0f, 1.0f, 1.0f);// デフォルトの大きさ
+
+
 }
 
 // 食材を置く処理
@@ -85,7 +95,17 @@ bool ACookingStation::PlaceItem(AActor* ItemToPlace)
 			AudioComponent1->SetSound(CookingSound);
 			AudioComponent1->Play();
 		}
-		
+
+		if (CookingEffect)//ソケット1の位置に火のエフェクトを
+		{
+			SpawnedEffect1 = UNiagaraFunctionLibrary::SpawnSystemAttached(
+				CookingEffect, ItemSocket1, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true
+			);
+			if (SpawnedEffect1)
+			{
+				SpawnedEffect1->SetRelativeScale3D(EffectScale);
+			}
+		}
 		return true;
 	}
 	// 左が埋まっていたら、右（ソケット2）が空いているかチェック！
@@ -102,6 +122,17 @@ bool ACookingStation::PlaceItem(AActor* ItemToPlace)
 		{
 			AudioComponent2->SetSound(CookingSound);
 			AudioComponent2->Play();
+		}
+		// --- 【追加】ソケット2の位置に火のエフェクトを出す ---
+		if (CookingEffect)
+		{
+			SpawnedEffect2 = UNiagaraFunctionLibrary::SpawnSystemAttached(
+				CookingEffect, ItemSocket2, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true
+			);
+			if (SpawnedEffect1)
+			{
+				SpawnedEffect1->SetRelativeScale3D(EffectScale);
+			}
 		}
 		return true;
 	}
@@ -193,6 +224,12 @@ AActor* ACookingStation::RetrieveItem()
 		CurrentItem1 = nullptr;
 		CurrentState1 = ECookingState::Empty;
 		AudioComponent1->Stop(); // 【追加】取り出した時も止める
+		
+		if (SpawnedEffect1)// --- 【追加】取り出したら火のエフェクトを消す ---
+		{
+			SpawnedEffect1->DestroyComponent();
+			SpawnedEffect1 = nullptr;
+		}
 		return ItemToReturn;
 	}
 	else if (CurrentState2 == ECookingState::Done)
@@ -202,6 +239,12 @@ AActor* ACookingStation::RetrieveItem()
 		CurrentItem2 = nullptr;
 		CurrentState2 = ECookingState::Empty;
 		AudioComponent2->Stop(); // 【追加】取り出した時も止める
+		// --- 【追加】取り出したら火のエフェクトを消す ---
+		if (SpawnedEffect2)
+		{
+			SpawnedEffect2->DestroyComponent();
+			SpawnedEffect2 = nullptr;
+		}
 		return ItemToReturn;
 	}
 
@@ -212,6 +255,12 @@ AActor* ACookingStation::RetrieveItem()
 		CurrentItem1 = nullptr;
 		CurrentState1 = ECookingState::Empty;
 		AudioComponent1->Stop(); // 【追加】取り出した時も止める
+		// --- 【追加】取り出したら火のエフェクトを消す ---
+		if (SpawnedEffect1)
+		{
+			SpawnedEffect1->DestroyComponent();
+			SpawnedEffect1 = nullptr;
+		}
 		return ItemToReturn;
 	}
 	else if (CurrentState2 == ECookingState::Burnt)
@@ -220,6 +269,14 @@ AActor* ACookingStation::RetrieveItem()
 		CurrentItem2 = nullptr;
 		CurrentState2 = ECookingState::Empty;
 		AudioComponent2->Stop(); // 【追加】取り出した時も止める
+		
+		// --- 【追加】取り出したら火のエフェクトを消す ---
+		if (SpawnedEffect2)
+		{
+			SpawnedEffect2->DestroyComponent();
+			SpawnedEffect2 = nullptr;
+		}
+	
 		return ItemToReturn;
 	}
 

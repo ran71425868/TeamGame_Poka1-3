@@ -65,6 +65,12 @@ protected:
 	// --- 【追加】完成した時に一度だけ鳴らすサウンド ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings|Audio")
 	class USoundBase* KamseiSound;
+	// --- 【追加】BPエディタで設定するパーティクル/Niagaraアセット ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings|FX")
+	class UNiagaraSystem* CookingEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings|FX")
+	FVector EffectScale;
 
 	// --- 【変更】状態管理とタイマーを2つに増やす ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking State")
@@ -79,6 +85,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking State")
 	AActor* CurrentItem2;
 
+	// --- 【追加】生成されたエフェクトを後で消すためのコンポーネント変数 ---
+	UPROPERTY()
+	class UNiagaraComponent* SpawnedEffect1;
+
+	UPROPERTY()
+	class UNiagaraComponent* SpawnedEffect2;
 
 	FTimerHandle CookingTimerHandle1;
 	FTimerHandle CookingTimerHandle2;
