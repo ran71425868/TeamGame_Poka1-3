@@ -3,6 +3,7 @@
 #include "Engine/SkyLight.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Engine/PostProcessVolume.h"
 
 ATimeOfDayHandler::ATimeOfDayHandler()
 {
@@ -21,6 +22,11 @@ void ATimeOfDayHandler::BeginPlay()
         StartRotation.Yaw = 0.0f;
         StartRotation.Roll = 0.0f;
         SunLight->SetActorRotation(StartRotation);
+    }
+
+    if (SkyLight && SkyLight->GetLightComponent())
+    {
+        SkyLight->GetLightComponent()->SetIntensity(1500.0f);
     }
 
     if (KitchenVolume)
@@ -58,7 +64,7 @@ void ATimeOfDayHandler::Tick(float DeltaTime)
             float Alpha = FMath::Clamp((CurrentRotation.Pitch - (-60.0f)) / (-5.0f - (-60.0f)), 0.0f, 1.0f);
 
             // ⭕ 【変更】開始時は 1500.0f（大快晴）、最終値は 「100.0f」（しっかり暗い夕方）まで落とす！
-            float NewIntensity = FMath::Lerp(1500.0f, 100.0f, Alpha);
+            float NewIntensity = FMath::Lerp(1500.0f, 150.0f, Alpha);
             SkyLight->GetLightComponent()->SetIntensity(NewIntensity);
         }
         else
@@ -67,7 +73,10 @@ void ATimeOfDayHandler::Tick(float DeltaTime)
             CurrentRotation.Pitch = -5.0f;
             SunLight->SetActorRotation(CurrentRotation);
 
-            SkyLight->GetLightComponent()->SetIntensity(100.0f);
+            SkyLight->GetLightComponent()->SetIntensity(150.0f);
+
+            PrimaryActorTick.SetTickFunctionEnable(false);
         }
+        
     }
 }
