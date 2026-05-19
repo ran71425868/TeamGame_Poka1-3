@@ -21,10 +21,11 @@ void AChefPlayerController::OpenSkillMenu()
     SetPause(true);
 
     // マウスカーソルを表示し、入力モードをUI専用に変更
-    bShowMouseCursor = true;
-    FInputModeUIOnly InputMode;
-    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    FInputModeGameAndUI InputMode;
+    InputMode.SetHideCursorDuringCapture(true); // クリック時も隠す
     SetInputMode(InputMode);
+
+
 
     // スキルを抽選
     TArray<UUSkillDataAsset*> RandomSkills = GetRandomSkills();
