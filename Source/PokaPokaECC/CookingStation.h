@@ -32,6 +32,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class USceneComponent* ItemSocket2;
 
+	// --- 【追加】調理中の音を鳴らすためのコンポーネント ---
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UAudioComponent* AudioComponent1;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UAudioComponent* AudioComponent2;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings")
 	float CookTime;
 
@@ -51,6 +58,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings", meta = (ClampMin = "1", ClampMax = "2"))
 	int32 MaxCapacity;
 
+	// --- 【追加】BPエディタで設定するサウンドアセット ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings|Audio")
+	class USoundBase* CookingSound;
+
+	// --- 【追加】完成した時に一度だけ鳴らすサウンド ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings|Audio")
+	class USoundBase* KamseiSound;
+
 	// --- 【変更】状態管理とタイマーを2つに増やす ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking State")
 	ECookingState CurrentState1;
@@ -63,6 +78,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking State")
 	AActor* CurrentItem2;
+
 
 	FTimerHandle CookingTimerHandle1;
 	FTimerHandle CookingTimerHandle2;
