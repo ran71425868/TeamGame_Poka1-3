@@ -7,12 +7,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "UObject/UnrealType.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/BoxComponent.h"   // 【追加】
-#include "ItemHoldComponent.h"         // 【追加】プレイヤーのスコアを減らすため
+#include "Components/BoxComponent.h"
+#include "ItemHoldComponent.h"
 
 ABobNPCCharacter::ABobNPCCharacter()
 {
-    // 【重要】向きを毎フレーム調整するために、Tick（更新処理）をONにしました！
     PrimaryActorTick.bCanEverTick = true;
 
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -30,11 +29,10 @@ ABobNPCCharacter::ABobNPCCharacter()
         GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
     }
 
-    // 【追加】目の前の「受け取り判定」の箱を作成して設定
     ReceiveArea = CreateDefaultSubobject<UBoxComponent>(TEXT("ReceiveArea"));
     ReceiveArea->SetupAttachment(RootComponent);
-    ReceiveArea->SetBoxExtent(FVector(60.0f, 60.0f, 60.0f));     // 箱の大きさ
-    ReceiveArea->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f)); // 客の100cm前に配置
+    ReceiveArea->SetBoxExtent(FVector(60.0f, 60.0f, 60.0f));
+    ReceiveArea->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
     ReceiveArea->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 }
 
@@ -42,7 +40,6 @@ void ABobNPCCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 箱の判定に何かが触れたら、OnReceiveAreaOverlap 関数を呼ぶように登録
     ReceiveArea->OnComponentBeginOverlap.AddDynamic(this, &ABobNPCCharacter::OnReceiveAreaOverlap);
 
     if (!TargetCounterTag.IsNone())
@@ -64,31 +61,26 @@ void ABobNPCCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    // 【追加】もし待機中 ＆ カウンターが見つかっているなら、カウンターの方へ体を向ける！
     if (CurrentState == ECustomerState::Waiting && TargetCounter)
     {
         FVector Direction = TargetCounter->GetActorLocation() - GetActorLocation();
-        Direction.Z = 0.0f; // 上下には傾かないようにする
+        Direction.Z = 0.0f;
 
         if (!Direction.IsNearlyZero())
         {
             FRotator TargetRot = Direction.Rotation();
-            // 今の向きから目標の向きへ、滑らかに回転させる（6.0fは回転スピード）
             SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 6.0f));
         }
     }
 }
 
-// 【追加】目の前の箱にアイテムが入ってきた時の処理（台に置かれた or 投げられた）
 void ABobNPCCharacter::OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    // 待機中じゃない時、または相手が空っぽの時は無視
     if (CurrentState != ECustomerState::Waiting || !OtherActor) return;
 
     FName FoodTag = NAME_None;
     bool bIsFood = false;
 
-    // 触れたものが「料理（ProvidedFoodTagを持っているか）」を確認
     if (FProperty* Prop = OtherActor->GetClass()->FindPropertyByName(FName("ProvidedFoodTag")))
     {
         if (FNameProperty* NameProp = CastField<FNameProperty>(Prop))
@@ -98,7 +90,6 @@ void ABobNPCCharacter::OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedCompo
         }
     }
 
-    // もし料理だったら、自動で受け取る！
     if (bIsFood && FoodTag != NAME_None)
     {
         float PriceMult = 1.0f;
@@ -115,13 +106,10 @@ void ABobNPCCharacter::OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedCompo
                 FoodScore = IntProp->GetPropertyValue_InContainer(OtherActor);
         }
 
-        // 置かれた料理を消滅させる
         OtherActor->Destroy();
 
-        // Bobに評価させる
         bool bIsCorrectFood = ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
 
-        // 間違った料理を置かれていたら、ここでペナルティを発生させる
         if (!bIsCorrectFood)
         {
             ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
@@ -178,11 +166,17 @@ void ABobNPCCharacter::MoveToNextPathPoint()
     {
         CurrentState = ECustomerState::Waiting;
         if (TalkingMontage) PlayAnimMontage(TalkingMontage);
+
+        // 【追加】カウンターに着いたらタイマー開始
+        GetWorld()->GetTimerManager().SetTimer(PatienceTimerHandle, this, &ABobNPCCharacter::OnPatienceDepleted, PatienceTime, false);
     }
 }
 
 bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore)
 {
+    // 【追加】料理を受け取ったらタイマーを止める
+    GetWorld()->GetTimerManager().ClearTimer(PatienceTimerHandle);
+
     CurrentState = ECustomerState::Leaving;
 
     if (ProvidedFoodTag != DesiredFoodTag)
@@ -246,4 +240,32 @@ void ABobNPCCharacter::OnMoveCompleted(FAIRequestID RequestID, const FPathFollow
             Destroy();
         }
     }
+}
+
+// 【追加】待たされすぎて時間切れになった時の処理
+void ABobNPCCharacter::OnPatienceDepleted()
+{
+    if (CurrentState != ECustomerState::Waiting) return;
+
+    CurrentState = ECustomerState::Leaving;
+
+    if (YellingMontage) PlayAnimMontage(YellingMontage);
+
+    FString DebugMsg = TEXT("Bob: TOO LATE! I'm leaving!");
+    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, DebugMsg);
+    UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
+
+    ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+    if (PlayerChar)
+    {
+        UItemHoldComponent* HoldComp = PlayerChar->FindComponentByClass<UItemHoldComponent>();
+        if (HoldComp)
+        {
+            int32 PenaltyPoint = 20;
+            HoldComp->TotalCollectedScore -= PenaltyPoint;
+            if (HoldComp->TotalCollectedScore < 0) HoldComp->TotalCollectedScore = 0;
+        }
+    }
+
+    MoveToDestination(ExitLocation);
 }
