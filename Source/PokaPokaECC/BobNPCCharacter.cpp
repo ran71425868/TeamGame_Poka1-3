@@ -9,6 +9,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
 #include "ItemHoldComponent.h"
+// ★追加：UIを表示するためのインクルード
+#include "Components/WidgetComponent.h"
+#include "Engine/Texture2D.h"
 
 ABobNPCCharacter::ABobNPCCharacter()
 {
@@ -34,6 +37,14 @@ ABobNPCCharacter::ABobNPCCharacter()
     ReceiveArea->SetBoxExtent(FVector(60.0f, 60.0f, 60.0f));
     ReceiveArea->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
     ReceiveArea->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+    // ★追加：頭上のポップ（UI）の初期設定
+    OrderWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("OrderWidgetComp"));
+    OrderWidgetComp->SetupAttachment(RootComponent);
+    OrderWidgetComp->SetRelativeLocation(FVector(0.0f, 0.0f, 130.0f)); // 頭の少し上に配置
+    OrderWidgetComp->SetWidgetSpace(EWidgetSpace::Screen); // 常にカメラ（プレイヤー）の方を向く
+    OrderWidgetComp->SetDrawSize(FVector2D(120.0f, 120.0f));
+    OrderWidgetComp->SetVisibility(false); // お店に着くまでは隠しておく
 }
 
 void ABobNPCCharacter::BeginPlay()
@@ -41,6 +52,12 @@ void ABobNPCCharacter::BeginPlay()
     Super::BeginPlay();
 
     ReceiveArea->OnComponentBeginOverlap.AddDynamic(this, &ABobNPCCharacter::OnReceiveAreaOverlap);
+
+    // ★追加：設定された「欲しい料理のタグ」から、対応する画像を探しておく
+    if (FoodIconMap.Contains(DesiredFoodTag))
+    {
+        CurrentOrderIcon = FoodIconMap[DesiredFoodTag];
+    }
 
     if (!TargetCounterTag.IsNone())
     {
@@ -50,9 +67,6 @@ void ABobNPCCharacter::BeginPlay()
         if (FoundActors.Num() > 0)
         {
             TargetCounter = FoundActors[0];
-
-            FString OrderMsg = FString::Printf(TEXT("Bob: FOUND Table! I want to eat [%s]!"), *DesiredFoodTag.ToString());
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, OrderMsg);
         }
     }
 }
@@ -118,11 +132,8 @@ void ABobNPCCharacter::OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedCompo
                 UItemHoldComponent* HoldComp = PlayerChar->FindComponentByClass<UItemHoldComponent>();
                 if (HoldComp)
                 {
-                    int32 PenaltyPoint = 10;
-                    HoldComp->TotalCollectedScore -= PenaltyPoint;
+                    HoldComp->TotalCollectedScore -= 10;
                     if (HoldComp->TotalCollectedScore < 0) HoldComp->TotalCollectedScore = 0;
-
-                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("【ペナルティ】台に間違った料理を置かれた！ 評価が %d 下がった！"), PenaltyPoint));
                 }
             }
         }
@@ -167,24 +178,27 @@ void ABobNPCCharacter::MoveToNextPathPoint()
         CurrentState = ECustomerState::Waiting;
         if (TalkingMontage) PlayAnimMontage(TalkingMontage);
 
-        // 【追加】カウンターに着いたらタイマー開始
         GetWorld()->GetTimerManager().SetTimer(PatienceTimerHandle, this, &ABobNPCCharacter::OnPatienceDepleted, PatienceTime, false);
+
+        // ★追加：カウンターに着いた時、ブループリントに「画像を出して！」と命令し、ポップを表示する
+        if (OrderWidgetComp)
+        {
+            UpdateOrderUI(CurrentOrderIcon);
+            OrderWidgetComp->SetVisibility(true);
+        }
     }
 }
 
 bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore)
 {
-    // 【追加】料理を受け取ったらタイマーを止める
     GetWorld()->GetTimerManager().ClearTimer(PatienceTimerHandle);
-
     CurrentState = ECustomerState::Leaving;
+
+    // ★追加：料理をもらって帰る時はポップを隠す
+    if (OrderWidgetComp) OrderWidgetComp->SetVisibility(false);
 
     if (ProvidedFoodTag != DesiredFoodTag)
     {
-        FString DebugMsg = FString::Printf(TEXT("Bob: WRONG FOOD! I wanted [%s], but got [%s]!"), *DesiredFoodTag.ToString(), *ProvidedFoodTag.ToString());
-        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, DebugMsg);
-        UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
-
         MoveToDestination(ExitLocation);
         return false;
     }
@@ -203,7 +217,6 @@ bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
         if (SpawnedMoney)
         {
             int32 FinalAmount = FMath::RoundToInt(BaseMoneyAmount * PriceMultiplier);
-
             if (FProperty* Property = SpawnedMoney->GetClass()->FindPropertyByName(TEXT("Amount")))
             {
                 if (FIntProperty* IntProperty = CastField<FIntProperty>(Property))
@@ -211,10 +224,6 @@ bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
                     IntProperty->SetPropertyValue_InContainer(SpawnedMoney, FinalAmount);
                 }
             }
-
-            FString DebugMsg = FString::Printf(TEXT("Bob: SUCCESS! Ordered [%s], Paid Val=[%d] (Multiplier: %.2f), Points=[%d]"), *DesiredFoodTag.ToString(), FinalAmount, PriceMultiplier, EvaluationScore);
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, DebugMsg);
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
         }
     }
 
@@ -242,12 +251,14 @@ void ABobNPCCharacter::OnMoveCompleted(FAIRequestID RequestID, const FPathFollow
     }
 }
 
-// 【追加】待たされすぎて時間切れになった時の処理
 void ABobNPCCharacter::OnPatienceDepleted()
 {
     if (CurrentState != ECustomerState::Waiting) return;
 
     CurrentState = ECustomerState::Leaving;
+
+    // ★追加：怒って帰る時もポップを隠す
+    if (OrderWidgetComp) OrderWidgetComp->SetVisibility(false);
 
     if (YellingMontage) PlayAnimMontage(YellingMontage);
 
@@ -261,8 +272,7 @@ void ABobNPCCharacter::OnPatienceDepleted()
         UItemHoldComponent* HoldComp = PlayerChar->FindComponentByClass<UItemHoldComponent>();
         if (HoldComp)
         {
-            int32 PenaltyPoint = 20;
-            HoldComp->TotalCollectedScore -= PenaltyPoint;
+            HoldComp->TotalCollectedScore -= 20;
             if (HoldComp->TotalCollectedScore < 0) HoldComp->TotalCollectedScore = 0;
         }
     }
