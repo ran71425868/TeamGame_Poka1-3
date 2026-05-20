@@ -101,10 +101,16 @@ protected:
 	void OnCookingFinished2();
 	void OnBurnt2();
 
+	// BeginPlayのオーバーライド宣言を追加
+	virtual void BeginPlay() override;
 public:
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	bool PlaceItem(AActor* ItemToPlace);
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	AActor* RetrieveItem();
+
+	// 調理速度の倍率（1.0が通常、数値が小さいほど速くなるなどの計算に使います）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Settings")
+	float CookingSpeedMultiplier = 1.0f;
 };

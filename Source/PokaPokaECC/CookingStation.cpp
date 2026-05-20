@@ -1,10 +1,11 @@
 ﻿#include "CookingStation.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
-#include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+#include "PokaPokaECCGameInstance.h"
+#include "Components/AudioComponent.h"
 
 ACookingStation::ACookingStation()
 {
@@ -50,6 +51,28 @@ ACookingStation::ACookingStation()
 	EffectScale = FVector(1.0f, 1.0f, 1.0f);// デフォルトの大きさ
 
 
+}
+
+void ACookingStation::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// --- GameInstanceから永続バフを取得して自身に適用 ---
+	if (UPokaPokaECCGameInstance* GI = Cast<UPokaPokaECCGameInstance>(UGameplayStatics::GetGameInstance(this)))
+	{
+		// 自身に設定されているタグを判定して、専用の倍率を適用する
+		if (ActorHasTag(FName("Fryer")))
+		{
+			CookingSpeedMultiplier = GI->FryerSpeedMultiplier;
+		}
+		else if (ActorHasTag(FName("Burner")))
+		{
+			CookingSpeedMultiplier = GI->BurnerSpeedMultiplier;
+		}
+	}
+
+	// 実際の調理タイマーを設定する際は、CookTime に CookingSpeedMultiplier を掛けた値をセットするようにします。
+	// 例: GetWorldTimerManager().SetTimer(Handle, ..., CookTime * CookingSpeedMultiplier, false);
 }
 
 // 食材を置く処理
