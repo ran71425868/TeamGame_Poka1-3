@@ -501,3 +501,36 @@ void UItemHoldComponent::PrimaryInteract()
         }
     }
 }
+
+void UItemHoldComponent::CycleSpawnerSelection(int32 Direction)
+{
+    if (!OwnerCharacter) return;
+
+    // 目の前のアイテムを探す（PrimaryInteractと同じ判定方法）
+    FVector Start = OwnerCharacter->GetActorLocation();
+    FVector Forward = OwnerCharacter->GetActorForwardVector();
+    FVector OverlapCenter = Start + (Forward * (InteractDistance * 0.6f));
+
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(70.0f);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(OwnerCharacter);
+
+    TArray<FOverlapResult> Overlaps;
+    GetWorld()->OverlapMultiByChannel(Overlaps, OverlapCenter, FQuat::Identity, ECC_Visibility, Sphere, Params);
+
+    for (const FOverlapResult& Overlap : Overlaps)
+    {
+        AActor* HitActor = Overlap.GetActor();
+        // 目の前にスポナー（冷蔵庫）があったら！
+        if (HitActor && HitActor->ActorHasTag("Spawner"))
+        {
+            AItemSpawner* Spawner = Cast<AItemSpawner>(HitActor);
+            if (Spawner)
+            {
+                // スポナーに切り替え命令を出して終了
+                Spawner->CycleSelection(Direction);
+                return;
+            }
+        }
+    }
+}
