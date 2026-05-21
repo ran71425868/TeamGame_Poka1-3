@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "USkillDataAsset.h"
 #include "PokaPokaSkillWidget.h"
+class USkillEffectManagerComponent;
+class UChefShopWidget;
 #include "PokaPokaECCPlayerController.generated.h"
 
 class UInputMappingContext;
@@ -25,6 +27,10 @@ public:
 
 	APokaPokaECCPlayerController();
 
+	// スキル発動処理を担うマネージャーコンポーネント
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skill System")
+	USkillEffectManagerComponent* SkillEffectManager;
+
 	// エディタ上で全スキルを登録するためのリスト
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill System")
 	TArray<UUSkillDataAsset*> MasterSkillList;
@@ -43,6 +49,16 @@ public:
 	// UIでスキルが選択され、かつ「次へ」が押された時に呼ばれる最終処理
 	UFUNCTION(BlueprintCallable, Category = "Skill System")
 	void SelectSkill(UUSkillDataAsset* SelectedSkill);
+
+	// --- 追加：ショップUIのクラス指定と表示関数 ---
+	UPROPERTY(EditAnywhere, Category = "Skill System")
+	TSubclassOf<UChefShopWidget> ShopWidgetClass;
+
+	UPROPERTY()
+	UChefShopWidget* ShopWidgetInstance;
+
+	UFUNCTION(BlueprintCallable, Category = "Skill System")
+	void ShowShopUI();
 
 private:
 	bool bIsSkillSelectionOpen;
