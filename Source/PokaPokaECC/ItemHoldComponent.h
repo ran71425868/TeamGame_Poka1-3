@@ -34,6 +34,20 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Interact")
 	float ItemSnapSpeed = 15.0f;
 
+	// ゴミ箱サウンド
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Sound")
+	class USoundBase* TrashSound;
+	//  アイテムを持ったときに再生するサウンド
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Sound")
+	class USoundBase* PickUpSound;
+	// アイテムを置いたときに再生するサウンド
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Sound")
+	class USoundBase* PlaceSound;
+	// ★追加: アイテムを持った時に再生するエフェクト
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Effect")
+	class UParticleSystem* PickUpEffect;
+
+
 	// グリッド配置関連の設定
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
 	float GridSize = 100.0f; // グリッドのサイズ（100cm単位など）
