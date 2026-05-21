@@ -4,19 +4,20 @@
 #include "GameFramework/Actor.h"
 #include "TutorialManager.generated.h"
 
-// チュートリアルの各進捗ステージを定義する列挙型
+// ★変更：チュートリアルの手順（ステップ）を焼肉弁当用に一新！
 UENUM(BlueprintType)
 enum class ETutorialStep : uint8
 {
-    Welcome      UMETA(DisplayName = "Welcome"),
-    PickTomato   UMETA(DisplayName = "Pick Tomato"),
-    CookTomato   UMETA(DisplayName = "Cook Tomato"),
-    ServeBob     UMETA(DisplayName = "Serve Bob"),
-    Complete     UMETA(DisplayName = "Complete")
+    Start           UMETA(DisplayName = "Start"),
+    GetMeat         UMETA(DisplayName = "Get Meat"),
+    CookMeat        UMETA(DisplayName = "Cook Meat"),
+    GetRice         UMETA(DisplayName = "Get Rice"),
+    CookRice        UMETA(DisplayName = "Cook Rice"),
+    TakeCookedRice  UMETA(DisplayName = "Take Cooked Rice"),
+    AssembleBento   UMETA(DisplayName = "Assemble Bento"),
+    ServeBento      UMETA(DisplayName = "Serve Bento"),
+    Completed       UMETA(DisplayName = "Completed")
 };
-
-// ステップが切り替わったことをUIに伝えるためのイベント（デリゲート）
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTutorialStepChangedSignature, ETutorialStep, NewStep);
 
 UCLASS()
 class POKAPOKAECC_API ATutorialManager : public AActor
@@ -30,19 +31,18 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    // 現在のチュートリアルのステップ（BPからいつでも確認可能）
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tutorial")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Tutorial")
     ETutorialStep CurrentStep;
 
-    // ステップが変更された時に発行されるイベント（BP側でイベントをバインドしてUIアニメーションを流す）
-    UPROPERTY(BlueprintAssignable, Category = "Tutorial|Events")
-    FOnTutorialStepChangedSignature OnTutorialStepChanged;
-
-    // 次のステップに進める関数（トマトを拾った時などにBPから呼び出す）
+    // 順番に次のステップへ進める関数
     UFUNCTION(BlueprintCallable, Category = "Tutorial")
-    void AdvanceStep();
+    void AdvanceTutorial();
 
-    // 任意のステップを直接セットする関数
+    // 「特定のステップ」に直接進める関数（※安全確実な方法）
     UFUNCTION(BlueprintCallable, Category = "Tutorial")
     void SetTutorialStep(ETutorialStep NewStep);
+
+    // ブループリント（UI）に「文字を更新して！」と伝える合図
+    UFUNCTION(BlueprintImplementableEvent, Category = "Tutorial")
+    void UpdateTutorialUI(ETutorialStep NewStep);
 };
