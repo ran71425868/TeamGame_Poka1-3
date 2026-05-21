@@ -10,6 +10,8 @@
 #include "BobNPCCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
+#include "BentoBoxItem.h"
+#include "FoodItemInterface.h" // 【追加】インターフェースを読み込む
 
 UItemHoldComponent::UItemHoldComponent()
 {
@@ -139,30 +141,20 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         }
     }
 
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
-        GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
-    }
-
     // ==========================================
     // 【常時表示UI用】 デバッグメッセージの固定表示
     // ==========================================
     if (GEngine)
     {
-        // 第1引数（Key）を固定の数値にすることで、毎フレーム上書きされ常時表示HUDのようになります
         GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
         GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
 
-        // ★追加：現在持っているアイテムの表示（Keyを102にする）
         if (HeldItem)
         {
-            // アイテムを持っている時は緑色でアイテム名を表示
             GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::Green, FString::Printf(TEXT("★ [Held Item] : %s"), *HeldItem->GetName()));
         }
         else
         {
-            // 何も持っていない時は白色で「なし」と表示
             GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::White, TEXT("★ [Held Item] : なし"));
         }
     }
@@ -260,6 +252,7 @@ void UItemHoldComponent::PrimaryInteract()
 
     if (HeldItem)
     {
+        AActor* FoundBentoBox = nullptr;
         AActor* FoundCounter = nullptr;
         AActor* FoundTrashCan = nullptr;
         AActor* FoundCookingStation = nullptr;
@@ -270,16 +263,50 @@ void UItemHoldComponent::PrimaryInteract()
             AActor* HitActor = Overlap.GetActor();
             if (HitActor)
             {
-                if (HitActor->ActorHasTag("TrashCan")) { FoundTrashCan = HitActor; break; }
+                if (HitActor->IsA(ABentoBoxItem::StaticClass())) { FoundBentoBox = HitActor; break; }
+                else if (HitActor->ActorHasTag("TrashCan")) { FoundTrashCan = HitActor; break; }
                 else if (HitActor->ActorHasTag("CookingStation")) { FoundCookingStation = HitActor; break; }
                 else if (HitActor->ActorHasTag("Customer")) { FoundCustomer = HitActor; break; }
                 else if (HitActor->ActorHasTag("Counter")) { FoundCounter = HitActor; break; }
             }
         }
 
-        if (FoundTrashCan)
+        // ▼▼▼ 弁当箱が見つかった場合の処理 ▼▼▼
+        if (FoundBentoBox)
         {
-            // ★追加: ゴミ箱が見つかり、サウンドが設定されていれば再生する
+            ABentoBoxItem* TargetBento = Cast<ABentoBoxItem>(FoundBentoBox);
+            if (TargetBento)
+            {
+                FName FoodTag = NAME_None;
+                float PriceMult = 0.0f;
+                int32 FoodScore = 0;
+
+                // 【変更】インターフェースを使ってデータを取得！
+                if (HeldItem->Implements<UFoodItemInterface>())
+                {
+                    IFoodItemInterface::Execute_GetFoodData(HeldItem, FoodTag, PriceMult, FoodScore);
+                }
+
+                if (TargetBento->AddIngredientWithData(FoodTag, PriceMult, FoodScore))
+                {
+                    HeldItem->Destroy();
+                    HeldItem = nullptr;
+                    bIsItemSnapping = false;
+
+                    if (PlaceSound)
+                    {
+                        UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetBento->GetActorLocation());
+                    }
+                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("弁当箱に具材を追加！"));
+                }
+                else
+                {
+                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("これ以上具材を入れられません（満杯または完成済み）"));
+                }
+            }
+        }
+        else if (FoundTrashCan)
+        {
             if (TrashSound)
             {
                 UGameplayStatics::PlaySoundAtLocation(this, TrashSound, FoundTrashCan->GetActorLocation());
@@ -300,10 +327,10 @@ void UItemHoldComponent::PrimaryInteract()
                 }
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
-             
+
                 if (PlaceSound)
                 {
-                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, Station->GetActorLocation());   //  調理台にアイテムを置いた時にサウンドを再生
+                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, Station->GetActorLocation());
                 }
             }
         }
@@ -313,39 +340,26 @@ void UItemHoldComponent::PrimaryInteract()
             if (Customer && Customer->CurrentState == ECustomerState::Waiting)
             {
                 FName FoodTag = NAME_None;
-                float PriceMult = 1.0f;
+                float PriceMult = 0.0f;
                 int32 FoodScore = 0;
 
-                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ProvidedFoodTag")))
+                // 【変更】インターフェースを使ってデータを取得！
+                if (HeldItem->Implements<UFoodItemInterface>())
                 {
-                    if (FNameProperty* NameProp = CastField<FNameProperty>(Prop))
-                        FoodTag = NameProp->GetPropertyValue_InContainer(HeldItem);
-                }
-                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("PriceMultiplier")))
-                {
-                    if (FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
-                        PriceMult = FloatProp->GetPropertyValue_InContainer(HeldItem);
-                }
-                if (FProperty* Prop = HeldItem->GetClass()->FindPropertyByName(FName("ScorePoint")))
-                {
-                    if (FIntProperty* IntProp = CastField<FIntProperty>(Prop))
-                        FoodScore = IntProp->GetPropertyValue_InContainer(HeldItem);
+                    IFoodItemInterface::Execute_GetFoodData(HeldItem, FoodTag, PriceMult, FoodScore);
                 }
 
                 HeldItem->Destroy();
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
 
-                // ★ここで結果（true/false）を受け取る！
                 bool bIsCorrectFood = Customer->ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
 
-                // ★間違っていた場合のペナルティ処理
                 if (!bIsCorrectFood)
                 {
-                    int32 PenaltyPoint = 10; // ← 減らすポイントはここで自由に調整してください！
+                    int32 PenaltyPoint = 10;
                     TotalCollectedScore -= PenaltyPoint;
 
-                    // スコアをマイナス（0未満）にしたくない場合は 0 で止める
                     if (TotalCollectedScore < 0)
                     {
                         TotalCollectedScore = 0;
@@ -393,7 +407,7 @@ void UItemHoldComponent::PrimaryInteract()
 
             if (PlaceSound)
             {
-                UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetLoc);//  カウンターにアイテムを置いた時にサウンドを再生
+                UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetLoc);
             }
         }
         else
@@ -412,10 +426,10 @@ void UItemHoldComponent::PrimaryInteract()
                 bIsItemPlacing = true;
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
-               
+
                 if (PlaceSound)
                 {
-                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, CurrentGridTargetLocation); //  床（グリッド）にアイテムを置いた時にサウンドを再生
+                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, CurrentGridTargetLocation);
                 }
             }
             else
@@ -466,15 +480,15 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
-                
+
                     if (PickUpSound)
                     {
-                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());    // 調理台からアイテムを持った時にサウンドを再生
+                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
                     }
-                 
+
                     if (PickUpEffect)
                     {
-                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);   //  調理台からアイテムを持った時にエフェクトを再生（手のソケット位置）
+                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                     }
                     return;
                 }
@@ -499,13 +513,13 @@ void UItemHoldComponent::PrimaryInteract()
                     bIsItemSnapping = true;
                     if (PickUpSound)
                     {
-                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());//  スポーナーからアイテムを持った時にサウンドを再生
+                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
                     }
                     if (PickUpEffect)
                     {
-                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);//  スポーナーからアイテムを持った時にエフェクトを再生
+                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                     }
-                    
+
                     return;
 
                 }
@@ -531,15 +545,15 @@ void UItemHoldComponent::PrimaryInteract()
                         }
                         HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                         bIsItemSnapping = true;
-                       
+
                         if (PickUpSound)
                         {
-                            UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation()); // 調理台上のアイテムを持った時にサウンドを再生
+                            UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
                         }
-                      
+
                         if (PickUpEffect)
                         {
-                            UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);  //  調理台上のアイテムを持った時にエフェクトを再生
+                            UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                         }
                         return;
                     }
@@ -559,14 +573,14 @@ void UItemHoldComponent::PrimaryInteract()
             }
             HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
             bIsItemSnapping = true;
-          
+
             if (PickUpSound)
             {
-                UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());  //  配置されているアイテムを拾った時にサウンドを再生
+                UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
             }
             if (PickUpEffect)
             {
-                UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);// 配置されているアイテムを拾った時にエフェクトを再生
+                UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
             }
         }
     }
