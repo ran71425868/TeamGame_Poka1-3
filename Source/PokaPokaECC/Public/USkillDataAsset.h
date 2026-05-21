@@ -4,6 +4,8 @@
 #include "Engine/DataAsset.h"
 #include "USkillDataAsset.generated.h"
 
+class UTexture2D; // 画像を扱うための前方宣言を追加
+
 UENUM(BlueprintType)
 enum class ESkillCategory : uint8
 {
@@ -30,6 +32,10 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill", meta = (MultiLine = true))
     FString Description;
+
+    // スキルのアイコン画像（後からエディタ上で写真をアサインするだけで動くようになります）
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
+    UTexture2D* SkillIcon;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill")
     ESkillCategory Category;
