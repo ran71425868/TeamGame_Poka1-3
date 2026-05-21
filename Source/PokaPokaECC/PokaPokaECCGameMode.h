@@ -15,7 +15,7 @@ enum class EStoreState : uint8
 UCLASS(minimalapi)
 class APokaPokaECCGameMode : public AGameModeBase
 {
-	GENERATED_BODY()
+	GENERATED_BODY() 
 
 public:
 	APokaPokaECCGameMode();
@@ -51,7 +51,7 @@ public:
 	EStoreState CurrentState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Flow")
-	float DayDuration = 5.0f;
+	float DayDuration = 115.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Flow")
 	float TimeRemaining;

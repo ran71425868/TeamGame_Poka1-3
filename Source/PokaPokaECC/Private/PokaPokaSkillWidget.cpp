@@ -3,6 +3,7 @@
 #include "Components/Button.h"
 #include "Components/Border.h"
 #include "Components/PanelWidget.h" 
+#include "Components/Image.h" // ★追加
 #include "PokaPokaSkillSlotWidget.h"
 #include "PokaPokaECCPlayerController.h"
 #include "Input/Reply.h"
@@ -18,25 +19,11 @@ void UPokaPokaSkillWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (PopupBorder)
-	{
-		PopupBorder->SetVisibility(ESlateVisibility::Collapsed);
-	}
 	if (EndGameBox)
 	{
 		EndGameBox->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	if (ConfirmBtn)
-	{
-		ConfirmBtn->IsFocusable = false;
-		ConfirmBtn->OnClicked.AddDynamic(this, &UPokaPokaSkillWidget::OnConfirmClicked);
-	}
-	if (CancelBtn)
-	{
-		CancelBtn->IsFocusable = false;
-		CancelBtn->OnClicked.AddDynamic(this, &UPokaPokaSkillWidget::OnCancelClicked);
-	}
 	if (NextBtn)
 	{
 		NextBtn->IsFocusable = false;
@@ -48,10 +35,14 @@ void UPokaPokaSkillWidget::NativeConstruct()
 		TitleBtn->OnClicked.AddDynamic(this, &UPokaPokaSkillWidget::OnTitleClicked);
 	}
 
+	// ★追加：背景を暗くする
+	if (BackgroundDim)
+	{
+		BackgroundDim->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.65f));
+	}
+
 	CurrentMenuState = ESkillMenuState::SelectingSkill;
 	OnSkillSelectionChanged(CurrentIndex);
-	// 初期フォーカスのビジュアルを反映
-	UpdateCardFocusVisuals();
 }
 
 void UPokaPokaSkillWidget::GenerateUI()
@@ -73,13 +64,51 @@ void UPokaPokaSkillWidget::GenerateUI()
 		}
 	}
 
-	// ★追加：生成完了後に、一番最初のカード（CurrentIndex=0）をC++側で光らせる
+	// ★追加：生成完了後に、テキストや画像、フォーカスを一括更新して初期表示を整える
+	UpdateSkillDisplay();
+}
+
+// ★追加：選択中のスキル情報（テキスト、画像、フォーカス）をすべて更新する統合関数
+void UPokaPokaSkillWidget::UpdateSkillDisplay()
+{
+	UUSkillDataAsset* SelectedSkill = nullptr;
+	if (AvailableSkills.IsValidIndex(CurrentIndex))
+	{
+		SelectedSkill = AvailableSkills[CurrentIndex];
+	}
+
+	if (SelectedSkill)
+	{
+		if (Text_SelectedSkillName)
+		{
+			Text_SelectedSkillName->SetText(FText::FromString(SelectedSkill->SkillName));
+			Text_SelectedSkillName->SetVisibility(ESlateVisibility::Visible);
+		}
+		if (Text_SelectedSkillDescription)
+		{
+			Text_SelectedSkillDescription->SetText(FText::FromString(SelectedSkill->Description));
+			Text_SelectedSkillDescription->SetVisibility(ESlateVisibility::Visible);
+		}
+		if (Image_SelectedSkillIcon)
+		{
+			if (SelectedSkill->SkillIcon)
+			{
+				Image_SelectedSkillIcon->SetBrushFromTexture(SelectedSkill->SkillIcon);
+				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Visible);
+			}
+			else
+			{
+				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
+
+	// 最後にカードの光る演出（フォーカス）を更新
 	UpdateCardFocusVisuals();
 }
 
 void UPokaPokaSkillWidget::UpdateCardFocusVisuals()
 {
-	// ★追加：SkillContainer内の子ウィジェットをループしてフォーカスを直接切り替える
 	if (!SkillContainer) return;
 
 	int32 ChildCount = SkillContainer->GetChildrenCount();
@@ -87,7 +116,6 @@ void UPokaPokaSkillWidget::UpdateCardFocusVisuals()
 	{
 		if (UPokaPokaSkillSlotWidget* SlotWidget = Cast<UPokaPokaSkillSlotWidget>(SkillContainer->GetChildAt(i)))
 		{
-			// 現在のループ番号が、選択中のCurrentIndexと一致していれば True、それ以外は False を渡す
 			SlotWidget->SetCardFocused(i == CurrentIndex);
 		}
 	}
@@ -105,16 +133,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				CurrentIndex--;
 				OnSkillSelectionChanged(CurrentIndex);
-				// ★修正：インデックス変更時にC++から直接カードの見た目を一括更新する
-				UpdateCardFocusVisuals();
-			}
-		}
-		else if (CurrentMenuState == ESkillMenuState::PopupConfirm)
-		{
-			if (PopupSelectedIndex > 0)
-			{
-				PopupSelectedIndex--;
-				OnPopupSelectionChanged(PopupSelectedIndex);
+				UpdateSkillDisplay(); // ★修正：移動した時に画像・テキストも更新する
 			}
 		}
 		else if (CurrentMenuState == ESkillMenuState::ResultSelect)
@@ -135,16 +154,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				CurrentIndex++;
 				OnSkillSelectionChanged(CurrentIndex);
-				// ★修正：インデックス変更時にC++から直接カードの見た目を一括更新する
-				UpdateCardFocusVisuals();
-			}
-		}
-		else if (CurrentMenuState == ESkillMenuState::PopupConfirm)
-		{
-			if (PopupSelectedIndex < 1)
-			{
-				PopupSelectedIndex++;
-				OnPopupSelectionChanged(PopupSelectedIndex);
+				UpdateSkillDisplay(); // ★修正：移動した時に画像・テキストも更新する
 			}
 		}
 		else if (CurrentMenuState == ESkillMenuState::ResultSelect)
@@ -172,18 +182,9 @@ void UPokaPokaSkillWidget::OnEnterKeyPressed()
 	{
 		if (AvailableSkills.IsValidIndex(CurrentIndex))
 		{
-			ShowSkillPopup(AvailableSkills[CurrentIndex]);
-		}
-	}
-	else if (CurrentMenuState == ESkillMenuState::PopupConfirm)
-	{
-		if (PopupSelectedIndex == 0)
-		{
-			OnConfirmClicked();
-		}
-		else
-		{
-			OnCancelClicked();
+			// ★修正：決定したスキルをここで確実に記憶しておく
+			CurrentSelectedSkill = AvailableSkills[CurrentIndex];
+			ShowResultScreen();
 		}
 	}
 	else if (CurrentMenuState == ESkillMenuState::ResultSelect)
@@ -197,53 +198,6 @@ void UPokaPokaSkillWidget::OnEnterKeyPressed()
 			OnTitleClicked();
 		}
 	}
-}
-
-void UPokaPokaSkillWidget::ShowSkillPopup(UUSkillDataAsset* SelectedSkill)
-{
-	if (!SelectedSkill) return;
-
-	CurrentSelectedSkill = SelectedSkill;
-
-	if (PopupNameText)
-	{
-		PopupNameText->SetText(FText::FromString(SelectedSkill->SkillName));
-	}
-	if (PopupDescText)
-	{
-		PopupDescText->SetText(FText::FromString(SelectedSkill->Description));
-	}
-
-	if (PopupBorder)
-	{
-		PopupBorder->SetVisibility(ESlateVisibility::Visible);
-	}
-
-	CurrentMenuState = ESkillMenuState::PopupConfirm;
-	PopupSelectedIndex = 0;
-	OnPopupSelectionChanged(PopupSelectedIndex);
-}
-
-void UPokaPokaSkillWidget::OnConfirmClicked()
-{
-	if (PopupBorder)
-	{
-		PopupBorder->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	ShowResultScreen();
-}
-
-void UPokaPokaSkillWidget::OnCancelClicked()
-{
-	if (PopupBorder)
-	{
-		PopupBorder->SetVisibility(ESlateVisibility::Collapsed);
-	}
-
-	CurrentMenuState = ESkillMenuState::SelectingSkill;
-	OnSkillSelectionChanged(CurrentIndex);
-	// ★修正：キャンセルで戻ってきた際にも見た目を再同期
-	UpdateCardFocusVisuals();
 }
 
 void UPokaPokaSkillWidget::ShowResultScreen()
