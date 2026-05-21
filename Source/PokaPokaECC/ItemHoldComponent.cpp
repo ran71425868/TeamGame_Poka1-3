@@ -8,6 +8,8 @@
 #include "Engine/Engine.h"
 #include "UObject/UnrealType.h"
 #include "BobNPCCharacter.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystem.h"
 
 UItemHoldComponent::UItemHoldComponent()
 {
@@ -277,6 +279,11 @@ void UItemHoldComponent::PrimaryInteract()
 
         if (FoundTrashCan)
         {
+            // ★追加: ゴミ箱が見つかり、サウンドが設定されていれば再生する
+            if (TrashSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(this, TrashSound, FoundTrashCan->GetActorLocation());
+            }
             HeldItem->Destroy();
             HeldItem = nullptr;
             bIsItemSnapping = false;
@@ -293,6 +300,11 @@ void UItemHoldComponent::PrimaryInteract()
                 }
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
+             
+                if (PlaceSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, Station->GetActorLocation());   //  調理台にアイテムを置いた時にサウンドを再生
+                }
             }
         }
         else if (FoundCustomer)
@@ -378,6 +390,11 @@ void UItemHoldComponent::PrimaryInteract()
             bIsItemPlacing = true;
             HeldItem = nullptr;
             bIsItemSnapping = false;
+
+            if (PlaceSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetLoc);//  カウンターにアイテムを置いた時にサウンドを再生
+            }
         }
         else
         {
@@ -395,6 +412,11 @@ void UItemHoldComponent::PrimaryInteract()
                 bIsItemPlacing = true;
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
+               
+                if (PlaceSound)
+                {
+                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, CurrentGridTargetLocation); //  床（グリッド）にアイテムを置いた時にサウンドを再生
+                }
             }
             else
             {
@@ -444,6 +466,16 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
+                
+                    if (PickUpSound)
+                    {
+                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());    // 調理台からアイテムを持った時にサウンドを再生
+                    }
+                 
+                    if (PickUpEffect)
+                    {
+                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);   //  調理台からアイテムを持った時にエフェクトを再生（手のソケット位置）
+                    }
                     return;
                 }
             }
@@ -465,7 +497,17 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
+                    if (PickUpSound)
+                    {
+                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());//  スポーナーからアイテムを持った時にサウンドを再生
+                    }
+                    if (PickUpEffect)
+                    {
+                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);//  スポーナーからアイテムを持った時にエフェクトを再生
+                    }
+                    
                     return;
+
                 }
             }
         }
@@ -489,6 +531,16 @@ void UItemHoldComponent::PrimaryInteract()
                         }
                         HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                         bIsItemSnapping = true;
+                       
+                        if (PickUpSound)
+                        {
+                            UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation()); // 調理台上のアイテムを持った時にサウンドを再生
+                        }
+                      
+                        if (PickUpEffect)
+                        {
+                            UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);  //  調理台上のアイテムを持った時にエフェクトを再生
+                        }
                         return;
                     }
                 }
@@ -507,6 +559,15 @@ void UItemHoldComponent::PrimaryInteract()
             }
             HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
             bIsItemSnapping = true;
+          
+            if (PickUpSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());  //  配置されているアイテムを拾った時にサウンドを再生
+            }
+            if (PickUpEffect)
+            {
+                UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);// 配置されているアイテムを拾った時にエフェクトを再生
+            }
         }
     }
 }
