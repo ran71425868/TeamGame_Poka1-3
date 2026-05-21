@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -25,44 +23,57 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	// 営業を開始する
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
 	void StartDay();
 
-	// 営業を終了する（タイマー0で自動呼び出し）
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
 	void EndDay();
 
-	// スキル獲得後に「次へ」を押したときの処理
+	// EndGameBoxで「次へ（進む）」を押した時に呼ばれる（スキル選択を開く）
+	UFUNCTION(BlueprintCallable, Category = "Game Flow")
+	void ProceedToSkillSelection();
+
+	// スキル選択が完了した時にコントローラーから呼ばれる（ショップを開くか判定）
+	UFUNCTION(BlueprintCallable, Category = "Game Flow")
+	void ProceedAfterSkill();
+
+	// ショップ終了後、またはショップが無い日に呼ばれる（次のレベルへ遷移）
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
 	void TransitionToNextDay();
 
-	// 「タイトルへ」を押したときの処理
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
 	void TransitionToTitle();
 
-	// --- 進行管理変数 ---
+	UFUNCTION(BlueprintCallable, Category = "Game Flow")
+	bool IsShopDay() const;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Flow")
 	EStoreState CurrentState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Flow")
-	float DayDuration;
+	float DayDuration = 5.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Flow")
 	float TimeRemaining;
 
-	// 現在の日にち（初日は1）
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Flow")
 	int32 CurrentDay;
 
-	// タイトル画面のマップ名（エディタで設定可能に）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Flow")
-	FString TitleMapName;
+	FString TitleMapName = TEXT("Title");
 
-	// メインゲームのマップ名（ループ用）
+	// 最終リザルトシーンのマップ名
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Flow")
-	FString GameMapName;
+	FString FinalResultMapName = TEXT("FinalResultScene");
+
+protected:
+	// --- BP側でUIを表示するためのイベント ---
+
+	// 1日の終わりにEndGameBoxを表示するイベント
+	UFUNCTION(BlueprintImplementableEvent, Category = "Game Flow|UI")
+	void OnShowEndGameBox();
+
+	// ショップ画面のUIを表示するイベント
+	UFUNCTION(BlueprintImplementableEvent, Category = "Game Flow|UI")
+	void OnShowShopUI();
 };
-
-
-
