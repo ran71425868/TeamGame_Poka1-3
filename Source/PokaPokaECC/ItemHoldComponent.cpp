@@ -11,12 +11,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
 #include "BentoBoxItem.h"
-#include "FoodItemInterface.h" // 【追加】インターフェースを読み込む
+#include "FoodItemInterface.h"
 
 UItemHoldComponent::UItemHoldComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
-
     MagnetRadius = 300.0f;
     MagnetSpeed = 10.0f;
     CollectionDistance = 70.0f;
@@ -36,14 +35,8 @@ void UItemHoldComponent::BeginPlay()
             GridHighlightMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
             GridHighlightMesh->SetHiddenInGame(true);
 
-            if (HighlightMeshAsset)
-            {
-                GridHighlightMesh->SetStaticMesh(HighlightMeshAsset);
-            }
-            if (HighlightMaterial)
-            {
-                GridHighlightMesh->SetMaterial(0, HighlightMaterial);
-            }
+            if (HighlightMeshAsset) GridHighlightMesh->SetStaticMesh(HighlightMeshAsset);
+            if (HighlightMaterial) GridHighlightMesh->SetMaterial(0, HighlightMaterial);
         }
     }
 }
@@ -91,7 +84,6 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
     if (OwnerCharacter)
     {
         FVector PlayerLoc = OwnerCharacter->GetActorLocation();
-
         FCollisionShape MagnetSphere = FCollisionShape::MakeSphere(MagnetRadius);
         TArray<FOverlapResult> MagnetOverlaps;
         FCollisionQueryParams MagnetParams;
@@ -123,13 +115,9 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
                     }
 
                     OnMoneyCollected.Broadcast(CollectedMoney, CollectedScore);
-
                     TotalCollectedMoney += CollectedMoney;
                     TotalCollectedScore += CollectedScore;
-
                     HitActor->Destroy();
-
-                    UE_LOG(LogTemp, Warning, TEXT("マネー回収！ 獲得:%d, スコア:%d | 合計お金:%d, 合計スコア:%d"), CollectedMoney, CollectedScore, TotalCollectedMoney, TotalCollectedScore);
                 }
                 else
                 {
@@ -141,22 +129,12 @@ void UItemHoldComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
         }
     }
 
-    // ==========================================
-    // 【常時表示UI用】 デバッグメッセージの固定表示
-    // ==========================================
     if (GEngine)
     {
         GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("★ [Total Money] : %d 円"), TotalCollectedMoney));
         GEngine->AddOnScreenDebugMessage(101, 0.0f, FColor::Cyan, FString::Printf(TEXT("★ [Total Score] : %d pt"), TotalCollectedScore));
-
-        if (HeldItem)
-        {
-            GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::Green, FString::Printf(TEXT("★ [Held Item] : %s"), *HeldItem->GetName()));
-        }
-        else
-        {
-            GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::White, TEXT("★ [Held Item] : なし"));
-        }
+        if (HeldItem) GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::Green, FString::Printf(TEXT("★ [Held Item] : %s"), *HeldItem->GetName()));
+        else GEngine->AddOnScreenDebugMessage(102, 0.0f, FColor::White, TEXT("★ [Held Item] : なし"));
     }
 }
 
@@ -189,16 +167,12 @@ void UItemHoldComponent::UpdateGridHighlight()
         if (HitResult.ImpactNormal.Z > 0.5f && (HitResult.ImpactPoint.Z <= Start.Z + MaxPlacementHeight))
         {
             FVector SnappedLocation = FVector(SnappedX, SnappedY, HitResult.ImpactPoint.Z + PlacementZOffset);
-
             FCollisionShape CheckSphere = FCollisionShape::MakeSphere(20.0f);
             bool bIsOccupied = false;
             TArray<FOverlapResult> CheckOverlaps;
 
             FCollisionQueryParams OverlapParams = TraceParams;
-            if (HitResult.GetActor())
-            {
-                OverlapParams.AddIgnoredActor(HitResult.GetActor());
-            }
+            if (HitResult.GetActor()) OverlapParams.AddIgnoredActor(HitResult.GetActor());
 
             GetWorld()->OverlapMultiByChannel(CheckOverlaps, SnappedLocation, FQuat::Identity, ECC_Visibility, CheckSphere, OverlapParams);
 
@@ -215,7 +189,6 @@ void UItemHoldComponent::UpdateGridHighlight()
             {
                 bCanPlaceOnGrid = true;
                 CurrentGridTargetLocation = SnappedLocation;
-
                 float SnappedYaw = FMath::RoundToFloat(OwnerCharacter->GetActorRotation().Yaw / 90.0f) * 90.0f;
                 CurrentGridTargetRotation = FRotator(0.0f, SnappedYaw, 0.0f);
 
@@ -225,7 +198,6 @@ void UItemHoldComponent::UpdateGridHighlight()
             }
         }
     }
-
     bCanPlaceOnGrid = false;
     GridHighlightMesh->SetHiddenInGame(true);
 }
@@ -241,11 +213,7 @@ void UItemHoldComponent::PrimaryInteract()
     FCollisionShape Sphere = FCollisionShape::MakeSphere(70.0f);
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(OwnerCharacter);
-
-    if (HeldItem)
-    {
-        Params.AddIgnoredActor(HeldItem);
-    }
+    if (HeldItem) Params.AddIgnoredActor(HeldItem);
 
     TArray<FOverlapResult> Overlaps;
     GetWorld()->OverlapMultiByChannel(Overlaps, OverlapCenter, FQuat::Identity, ECC_Visibility, Sphere, Params);
@@ -271,7 +239,6 @@ void UItemHoldComponent::PrimaryInteract()
             }
         }
 
-        // ▼▼▼ 弁当箱が見つかった場合の処理 ▼▼▼
         if (FoundBentoBox)
         {
             ABentoBoxItem* TargetBento = Cast<ABentoBoxItem>(FoundBentoBox);
@@ -281,7 +248,6 @@ void UItemHoldComponent::PrimaryInteract()
                 float PriceMult = 0.0f;
                 int32 FoodScore = 0;
 
-                // 【変更】インターフェースを使ってデータを取得！
                 if (HeldItem->Implements<UFoodItemInterface>())
                 {
                     IFoodItemInterface::Execute_GetFoodData(HeldItem, FoodTag, PriceMult, FoodScore);
@@ -292,25 +258,13 @@ void UItemHoldComponent::PrimaryInteract()
                     HeldItem->Destroy();
                     HeldItem = nullptr;
                     bIsItemSnapping = false;
-
-                    if (PlaceSound)
-                    {
-                        UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetBento->GetActorLocation());
-                    }
-                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("弁当箱に具材を追加！"));
-                }
-                else
-                {
-                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("これ以上具材を入れられません（満杯または完成済み）"));
+                    if (PlaceSound) UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetBento->GetActorLocation());
                 }
             }
         }
         else if (FoundTrashCan)
         {
-            if (TrashSound)
-            {
-                UGameplayStatics::PlaySoundAtLocation(this, TrashSound, FoundTrashCan->GetActorLocation());
-            }
+            if (TrashSound) UGameplayStatics::PlaySoundAtLocation(this, TrashSound, FoundTrashCan->GetActorLocation());
             HeldItem->Destroy();
             HeldItem = nullptr;
             bIsItemSnapping = false;
@@ -327,23 +281,30 @@ void UItemHoldComponent::PrimaryInteract()
                 }
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
-
-                if (PlaceSound)
-                {
-                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, Station->GetActorLocation());
-                }
+                if (PlaceSound) UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, Station->GetActorLocation());
             }
         }
+        // ▼▼▼ お客さんが見つかった場合の処理 ▼▼▼
         else if (FoundCustomer)
         {
             ABobNPCCharacter* Customer = Cast<ABobNPCCharacter>(FoundCustomer);
             if (Customer && Customer->CurrentState == ECustomerState::Waiting)
             {
+                // 【追加ルール】今手に持っているのがお弁当箱クラスかどうか調べる
+                if (ABentoBoxItem* BentoBox = Cast<ABentoBoxItem>(HeldItem))
+                {
+                    // もしお弁当箱のタグが初期値（EmptyBento）のままなら、未完成なので渡せないようにする
+                    if (BentoBox->ProvidedFoodTag == FName("EmptyBento"))
+                    {
+                        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("お弁当が未完成です！ご飯と主菜を詰めてください。"));
+                        return; // ここで処理を終了し、手放さないようにする
+                    }
+                }
+
                 FName FoodTag = NAME_None;
                 float PriceMult = 0.0f;
                 int32 FoodScore = 0;
 
-                // 【変更】インターフェースを使ってデータを取得！
                 if (HeldItem->Implements<UFoodItemInterface>())
                 {
                     IFoodItemInterface::Execute_GetFoodData(HeldItem, FoodTag, PriceMult, FoodScore);
@@ -354,17 +315,11 @@ void UItemHoldComponent::PrimaryInteract()
                 bIsItemSnapping = false;
 
                 bool bIsCorrectFood = Customer->ReceiveFoodAndLeave(FoodTag, PriceMult, FoodScore);
-
                 if (!bIsCorrectFood)
                 {
                     int32 PenaltyPoint = 10;
                     TotalCollectedScore -= PenaltyPoint;
-
-                    if (TotalCollectedScore < 0)
-                    {
-                        TotalCollectedScore = 0;
-                    }
-
+                    if (TotalCollectedScore < 0) TotalCollectedScore = 0;
                     if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("【ペナルティ】間違った料理を出した！ 評価が %d 下がった！"), PenaltyPoint));
                 }
             }
@@ -404,11 +359,7 @@ void UItemHoldComponent::PrimaryInteract()
             bIsItemPlacing = true;
             HeldItem = nullptr;
             bIsItemSnapping = false;
-
-            if (PlaceSound)
-            {
-                UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetLoc);
-            }
+            if (PlaceSound) UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, TargetLoc);
         }
         else
         {
@@ -426,11 +377,7 @@ void UItemHoldComponent::PrimaryInteract()
                 bIsItemPlacing = true;
                 HeldItem = nullptr;
                 bIsItemSnapping = false;
-
-                if (PlaceSound)
-                {
-                    UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, CurrentGridTargetLocation);
-                }
+                if (PlaceSound) UGameplayStatics::PlaySoundAtLocation(this, PlaceSound, CurrentGridTargetLocation);
             }
             else
             {
@@ -480,16 +427,8 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
-
-                    if (PickUpSound)
-                    {
-                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
-                    }
-
-                    if (PickUpEffect)
-                    {
-                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
-                    }
+                    if (PickUpSound) UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
+                    if (PickUpEffect) UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                     return;
                 }
             }
@@ -511,17 +450,9 @@ void UItemHoldComponent::PrimaryInteract()
                     }
                     HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                     bIsItemSnapping = true;
-                    if (PickUpSound)
-                    {
-                        UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
-                    }
-                    if (PickUpEffect)
-                    {
-                        UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
-                    }
-
+                    if (PickUpSound) UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
+                    if (PickUpEffect) UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                     return;
-
                 }
             }
         }
@@ -545,16 +476,8 @@ void UItemHoldComponent::PrimaryInteract()
                         }
                         HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
                         bIsItemSnapping = true;
-
-                        if (PickUpSound)
-                        {
-                            UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
-                        }
-
-                        if (PickUpEffect)
-                        {
-                            UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
-                        }
+                        if (PickUpSound) UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
+                        if (PickUpEffect) UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
                         return;
                     }
                 }
@@ -573,15 +496,8 @@ void UItemHoldComponent::PrimaryInteract()
             }
             HeldItem->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, HandSocketName);
             bIsItemSnapping = true;
-
-            if (PickUpSound)
-            {
-                UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
-            }
-            if (PickUpEffect)
-            {
-                UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
-            }
+            if (PickUpSound) UGameplayStatics::PlaySoundAtLocation(this, PickUpSound, OwnerCharacter->GetActorLocation());
+            if (PickUpEffect) UGameplayStatics::SpawnEmitterAttached(PickUpEffect, OwnerCharacter->GetMesh(), HandSocketName);
         }
     }
 }
