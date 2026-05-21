@@ -7,7 +7,6 @@
 
 class UAnimMontage;
 class UBoxComponent;
-// ★追加：UI用のクラスを宣言
 class UWidgetComponent;
 class UTexture2D;
 
@@ -85,11 +84,11 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
     UAnimMontage* YellingMontage;
 
-    // ==========================================================
-    // ★ここから追加：頭上のポップ（UI）と画像設定用の変数
-    // ==========================================================
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "UI")
     UWidgetComponent* OrderWidgetComp;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TMap<FName, int32> FoodUnlockDays;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     TMap<FName, UTexture2D*> FoodIconMap;
@@ -97,10 +96,8 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Shop")
     UTexture2D* CurrentOrderIcon;
 
-    // ブループリントに「この画像をUIにセットして！」と命令する専用イベント
     UFUNCTION(BlueprintImplementableEvent, Category = "UI")
     void UpdateOrderUI(UTexture2D* IconTexture);
-    // ==========================================================
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     void MoveToDestination(FVector Destination);
@@ -121,4 +118,7 @@ private:
     void MoveToNextPathPoint();
 
     void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
+
+    // ★追加：アニメーションが終わったあとに実際に移動を開始する処理
+    void LeaveShop();
 };
