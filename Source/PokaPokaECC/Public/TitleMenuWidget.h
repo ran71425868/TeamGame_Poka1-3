@@ -20,15 +20,26 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* StartButton;
+	
+	// 【追加】新しく増やすDay1ボタン（安全のためOptionalにしています）
+	UPROPERTY(meta = (BindWidgetOptional))
+	UButton* Day1Button;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Transition")
-	FName NextLevelName = FName("testmap");
+	FName NextLevelName = FName("Tutorial");
+	// 【追加】Day1用の遷移先レベル名
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Transition")
+	FName Day1LevelName = FName("Day1");
 
 	UFUNCTION()
 	void OnStartClicked();
+
+	// 【追加】Day1ボタンが押されたときの関数
+	UFUNCTION()
+	void OnDay1Clicked();
 
 	UFUNCTION()
 	void OnExitClicked();
