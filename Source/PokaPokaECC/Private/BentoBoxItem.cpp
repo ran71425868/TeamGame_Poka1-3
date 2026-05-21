@@ -82,6 +82,12 @@ void ABentoBoxItem::UpdateBentoRecipe()
 		OnBentoCompleted(ProvidedFoodTag);
 		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("★ のり弁が完成しました！"));
 	}
+	else if (ContainedIngredients.Contains(FName("Tempura")))
+	{
+		ProvidedFoodTag = FName("Tendon");
+		OnBentoCompleted(ProvidedFoodTag);
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("★ 天丼が完成しました！"));
+	}
 }
 
 // インターフェースを通じて自分のデータ（タグ、合計金額、合計スコア）を渡す処理
