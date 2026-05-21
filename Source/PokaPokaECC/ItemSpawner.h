@@ -24,6 +24,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UStaticMeshComponent* SpawnerMesh;
 
+	// --- 【追加】アイテムが生成された時の音 ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner Settings|FX")
+	class USoundBase* SpawnSound;
+
+	// --- 【追加】アイテムが生成された時のエフェクト ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner Settings|FX")
+	class UNiagaraSystem* SpawnEffect;
+
 public:
 	// プレイヤーがインタラクトした時に呼ばれる関数
 	// 生成したアイテムを返す（プレイヤー側の処理で、それを受け取って手に付けるため）
