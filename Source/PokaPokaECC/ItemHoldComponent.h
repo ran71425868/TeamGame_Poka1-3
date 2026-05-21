@@ -88,6 +88,11 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stats")
 	int32 TotalCollectedScore = 0;
 
+	// スポナーの選択を切り替える関数 (1: 右, -1: 左)
+	// BlueprintCallableをつけることで、BPの方向キーイベントから呼べるようにします
+	UFUNCTION(BlueprintCallable, Category = "Interact")
+	void CycleSpawnerSelection(int32 Direction);
+
 private:
 	// 内部状態
 	UPROPERTY()

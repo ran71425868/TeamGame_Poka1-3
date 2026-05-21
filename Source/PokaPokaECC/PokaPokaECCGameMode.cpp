@@ -32,12 +32,12 @@ void APokaPokaECCGameMode::Tick(float DeltaSeconds)
 
 	if (CurrentState == EStoreState::InService)
 	{
-		TimeRemaining -= DeltaSeconds;
-		if (TimeRemaining <= 0.0f)
-		{
-			TimeRemaining = 0.0f;
-			EndDay();
-		}
+		//TimeRemaining -= DeltaSeconds;
+		//if (TimeRemaining <= 0.0f)
+		//{
+		//	TimeRemaining = 0.0f;
+		//	EndDay();
+		//}
 	}
 }
 

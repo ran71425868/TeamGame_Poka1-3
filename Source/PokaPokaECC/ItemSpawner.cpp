@@ -1,53 +1,62 @@
 #include "ItemSpawner.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 
-// --- 【追加】音とエフェクトを再生するためのインクルード ---
-#include "Kismet/GameplayStatics.h"
-#include "NiagaraFunctionLibrary.h"
-
-// コンストラクタ：ゲーム開始前の初期設定
 AItemSpawner::AItemSpawner()
 {
-	// スポナー自体は毎フレームの更新（Tick）を必要としないので処理を軽くするためにオフにする
 	PrimaryActorTick.bCanEverTick = false;
-
-	// メッシュコンポーネントを作成し、ルート（基準点）に設定
-	SpawnerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SpawnerMesh"));
-	RootComponent = SpawnerMesh;
-
-	// プレイヤーのSphereCastで「これはスポナーだ！」と判別できるようにタグを追加
-	Tags.Add(FName("Spawner"));
+	CurrentSelectedIndex = 0;
 }
 
-// アイテムを生成する関数
 AActor* AItemSpawner::SpawnItem()
 {
-	// BP側で「出すアイテム」が設定されていなければ、エラーを防ぐため何もしない
-	if (!ItemClassToSpawn)
+	// 【原因調査用デバッグ】
+	if (GEngine)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ItemSpawner: ItemClassToSpawn is null!"));
-		return nullptr;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+			FString::Printf(TEXT("Spawner Debug -> Array Num: %d, Selected Index: %d"), SpawnItemClasses.Num(), CurrentSelectedIndex));
 	}
 
-	// アイテムを生成する位置と回転を設定（箱の少し上に出現させる）
-	FVector SpawnLocation = GetActorLocation() + FVector(0.0f, 0.0f, 40.0f);
-	FRotator SpawnRotation = GetActorRotation();
+	if (SpawnItemClasses.Num() == 0) return nullptr;
 
-	// 世界（World）にアイテムを生成（Spawn）する
-	AActor* SpawnedItem = GetWorld()->SpawnActor<AActor>(ItemClassToSpawn, SpawnLocation, SpawnRotation);
-	
-	// --- 【追加】スポーン時に音を鳴らす ---
-	if (SpawnSound)
+	if (SpawnItemClasses.IsValidIndex(CurrentSelectedIndex) && SpawnItemClasses[CurrentSelectedIndex])
 	{
-		// スポナーの位置から音を鳴らす
-		UGameplayStatics::PlaySoundAtLocation(this, SpawnSound, GetActorLocation());
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		FVector SpawnLocation = GetActorLocation() + FVector(0, 0, 50.0f);
+		FRotator SpawnRotation = GetActorRotation();
+
+		return GetWorld()->SpawnActor<AActor>(SpawnItemClasses[CurrentSelectedIndex], SpawnLocation, SpawnRotation, SpawnParams);
 	}
 
-	if (SpawnEffect)
+	return nullptr;
+}
+
+void AItemSpawner::CycleSelection(int32 Direction)
+{
+	if (SpawnItemClasses.Num() <= 1) return;
+
+	CurrentSelectedIndex += Direction;
+
+	if (CurrentSelectedIndex >= SpawnItemClasses.Num())
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SpawnEffect, SpawnLocation, SpawnRotation);
+		CurrentSelectedIndex = 0;
 	}
-	
-	// 生成したアイテムを返す
-	return SpawnedItem;
+	else if (CurrentSelectedIndex < 0)
+	{
+		CurrentSelectedIndex = SpawnItemClasses.Num() - 1;
+	}
+
+	if (GEngine)
+	{
+		// 【修正】日本語による文字化けクラッシュを防ぐため、英語（半角）に変更しました
+		FString SelectedName = TEXT("None");
+		if (ItemNames.IsValidIndex(CurrentSelectedIndex))
+		{
+			SelectedName = ItemNames[CurrentSelectedIndex];
+		}
+
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Selected Item: %s"), *SelectedName));
+	}
 }
