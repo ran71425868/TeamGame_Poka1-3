@@ -32,12 +32,12 @@ void APokaPokaECCGameMode::Tick(float DeltaSeconds)
 
 	if (CurrentState == EStoreState::InService)
 	{
-		//TimeRemaining -= DeltaSeconds;
-		//if (TimeRemaining <= 0.0f)
-		//{
-		//	TimeRemaining = 0.0f;
-		//	EndDay();
-		//}
+		TimeRemaining -= DeltaSeconds;
+		if (TimeRemaining <= 0.0f)
+		{
+			TimeRemaining = 0.0f;
+			EndDay();
+		}
 	}
 }
 
@@ -78,25 +78,6 @@ void APokaPokaECCGameMode::ProceedToSkillSelection()
 bool APokaPokaECCGameMode::IsShopDay() const
 {
 	return (CurrentDay == 1 || CurrentDay == 3 || CurrentDay == 6);
-}
-
-// スキル選択・EndGameBoxが完了した後に呼ばれる処理
-void APokaPokaECCGameMode::ProceedAfterSkill()
-{
-	if (IsShopDay())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Day %d はショップ日のため、ショップを開きます。"), CurrentDay);
-		// コントローラーにショップを開くよう指示
-		if (APokaPokaECCPlayerController* PC = Cast<APokaPokaECCPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
-		{
-			PC->ShowShopUI();
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ショップ日ではないため、次のレベルへ進みます。"));
-		TransitionToNextDay();
-	}
 }
 
 void APokaPokaECCGameMode::TransitionToNextDay()

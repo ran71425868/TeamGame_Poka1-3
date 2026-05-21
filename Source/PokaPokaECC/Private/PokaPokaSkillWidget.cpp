@@ -74,28 +74,34 @@ void UPokaPokaSkillWidget::UpdateSkillDisplay()
 		SelectedSkill = AvailableSkills[CurrentIndex];
 	}
 
+	// 診断用：実行されているか画面に出す
+	if (GEngine)
+	{
+		FString DebugText = SelectedSkill ? SelectedSkill->SkillName : TEXT("No Data");
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("UI Update: %s"), *DebugText));
+	}
+
 	if (SelectedSkill)
 	{
+		// もしここで名前が更新されなければ、UIパーツと名前が一致していません
 		if (Text_SelectedSkillName)
 		{
 			Text_SelectedSkillName->SetText(FText::FromString(SelectedSkill->SkillName));
 			Text_SelectedSkillName->SetVisibility(ESlateVisibility::Visible);
 		}
+
 		if (Text_SelectedSkillDescription)
 		{
 			Text_SelectedSkillDescription->SetText(FText::FromString(SelectedSkill->Description));
 			Text_SelectedSkillDescription->SetVisibility(ESlateVisibility::Visible);
 		}
+
 		if (Image_SelectedSkillIcon)
 		{
 			if (SelectedSkill->SkillIcon)
 			{
 				Image_SelectedSkillIcon->SetBrushFromTexture(SelectedSkill->SkillIcon);
 				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Visible);
-			}
-			else
-			{
-				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
 	}
