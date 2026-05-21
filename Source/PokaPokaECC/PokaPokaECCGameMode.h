@@ -15,7 +15,7 @@ enum class EStoreState : uint8
 UCLASS(minimalapi)
 class APokaPokaECCGameMode : public AGameModeBase
 {
-	GENERATED_BODY()
+	GENERATED_BODY() 
 
 public:
 	APokaPokaECCGameMode();
