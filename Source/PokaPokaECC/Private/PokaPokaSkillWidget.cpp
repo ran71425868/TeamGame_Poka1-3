@@ -1,9 +1,9 @@
-#include "PokaPokaSkillWidget.h"
+ï»¿#include "PokaPokaSkillWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Components/Border.h"
 #include "Components/PanelWidget.h" 
-#include "Components/Image.h" // š’Ç‰Á
+#include "Components/Image.h"
 #include "PokaPokaSkillSlotWidget.h"
 #include "PokaPokaECCPlayerController.h"
 #include "Input/Reply.h"
@@ -35,7 +35,6 @@ void UPokaPokaSkillWidget::NativeConstruct()
 		TitleBtn->OnClicked.AddDynamic(this, &UPokaPokaSkillWidget::OnTitleClicked);
 	}
 
-	// š’Ç‰ÁF”wŒi‚ğˆÃ‚­‚·‚é
 	if (BackgroundDim)
 	{
 		BackgroundDim->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.65f));
@@ -64,11 +63,9 @@ void UPokaPokaSkillWidget::GenerateUI()
 		}
 	}
 
-	// š’Ç‰ÁF¶¬Š®—¹Œã‚ÉAƒeƒLƒXƒg‚â‰æ‘œAƒtƒH[ƒJƒX‚ğˆêŠ‡XV‚µ‚Ä‰Šú•\¦‚ğ®‚¦‚é
 	UpdateSkillDisplay();
 }
 
-// š’Ç‰ÁF‘I‘ğ’†‚ÌƒXƒLƒ‹î•ñiƒeƒLƒXƒgA‰æ‘œAƒtƒH[ƒJƒXj‚ğ‚·‚×‚ÄXV‚·‚é“‡ŠÖ”
 void UPokaPokaSkillWidget::UpdateSkillDisplay()
 {
 	UUSkillDataAsset* SelectedSkill = nullptr;
@@ -77,18 +74,28 @@ void UPokaPokaSkillWidget::UpdateSkillDisplay()
 		SelectedSkill = AvailableSkills[CurrentIndex];
 	}
 
+	// è¨ºæ–­ç”¨ï¼šå®Ÿè¡Œã•ã‚Œã¦ã„ã‚‹ã‹ç”»é¢ã«å‡ºã™
+	if (GEngine)
+	{
+		FString DebugText = SelectedSkill ? SelectedSkill->SkillName : TEXT("No Data");
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("UI Update: %s"), *DebugText));
+	}
+
 	if (SelectedSkill)
 	{
+		// ã‚‚ã—ã“ã“ã§åå‰ãŒæ›´æ–°ã•ã‚Œãªã‘ã‚Œã°ã€UIãƒ‘ãƒ¼ãƒ„ã¨åå‰ãŒä¸€è‡´ã—ã¦ã„ã¾ã›ã‚“
 		if (Text_SelectedSkillName)
 		{
 			Text_SelectedSkillName->SetText(FText::FromString(SelectedSkill->SkillName));
 			Text_SelectedSkillName->SetVisibility(ESlateVisibility::Visible);
 		}
+
 		if (Text_SelectedSkillDescription)
 		{
 			Text_SelectedSkillDescription->SetText(FText::FromString(SelectedSkill->Description));
 			Text_SelectedSkillDescription->SetVisibility(ESlateVisibility::Visible);
 		}
+
 		if (Image_SelectedSkillIcon)
 		{
 			if (SelectedSkill->SkillIcon)
@@ -96,14 +103,9 @@ void UPokaPokaSkillWidget::UpdateSkillDisplay()
 				Image_SelectedSkillIcon->SetBrushFromTexture(SelectedSkill->SkillIcon);
 				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Visible);
 			}
-			else
-			{
-				Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Collapsed);
-			}
 		}
 	}
 
-	// ÅŒã‚ÉƒJ[ƒh‚ÌŒõ‚é‰‰oiƒtƒH[ƒJƒXj‚ğXV
 	UpdateCardFocusVisuals();
 }
 
@@ -121,6 +123,18 @@ void UPokaPokaSkillWidget::UpdateCardFocusVisuals()
 	}
 }
 
+void UPokaPokaSkillWidget::UpdateResultFocusVisuals()
+{
+	if (TitleBtn)
+	{
+		TitleBtn->SetBackgroundColor(ResultSelectedIndex == 0 ? FLinearColor::Yellow : FLinearColor::White);
+	}
+	if (NextBtn)
+	{
+		NextBtn->SetBackgroundColor(ResultSelectedIndex == 1 ? FLinearColor::Yellow : FLinearColor::White);
+	}
+}
+
 FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	FKey PressedKey = InKeyEvent.GetKey();
@@ -133,7 +147,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				CurrentIndex--;
 				OnSkillSelectionChanged(CurrentIndex);
-				UpdateSkillDisplay(); // šC³FˆÚ“®‚µ‚½‚É‰æ‘œEƒeƒLƒXƒg‚àXV‚·‚é
+				UpdateSkillDisplay();
 			}
 		}
 		else if (CurrentMenuState == ESkillMenuState::ResultSelect)
@@ -142,6 +156,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				ResultSelectedIndex--;
 				OnResultSelectionChanged(ResultSelectedIndex);
+				UpdateResultFocusVisuals();
 			}
 		}
 		return FReply::Handled();
@@ -154,7 +169,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				CurrentIndex++;
 				OnSkillSelectionChanged(CurrentIndex);
-				UpdateSkillDisplay(); // šC³FˆÚ“®‚µ‚½‚É‰æ‘œEƒeƒLƒXƒg‚àXV‚·‚é
+				UpdateSkillDisplay();
 			}
 		}
 		else if (CurrentMenuState == ESkillMenuState::ResultSelect)
@@ -163,6 +178,7 @@ FReply UPokaPokaSkillWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 			{
 				ResultSelectedIndex++;
 				OnResultSelectionChanged(ResultSelectedIndex);
+				UpdateResultFocusVisuals();
 			}
 		}
 		return FReply::Handled();
@@ -182,7 +198,6 @@ void UPokaPokaSkillWidget::OnEnterKeyPressed()
 	{
 		if (AvailableSkills.IsValidIndex(CurrentIndex))
 		{
-			// šC³FŒˆ’è‚µ‚½ƒXƒLƒ‹‚ğ‚±‚±‚ÅŠmÀ‚É‹L‰¯‚µ‚Ä‚¨‚­
 			CurrentSelectedSkill = AvailableSkills[CurrentIndex];
 			ShowResultScreen();
 		}
@@ -191,11 +206,11 @@ void UPokaPokaSkillWidget::OnEnterKeyPressed()
 	{
 		if (ResultSelectedIndex == 0)
 		{
-			OnNextClicked();
+			OnTitleClicked();
 		}
 		else
 		{
-			OnTitleClicked();
+			OnNextClicked();
 		}
 	}
 }
@@ -207,20 +222,75 @@ void UPokaPokaSkillWidget::ShowResultScreen()
 		EndGameBox->SetVisibility(ESlateVisibility::Visible);
 	}
 
+	if (SkillContainer) SkillContainer->SetVisibility(ESlateVisibility::Collapsed);
+	if (Text_SelectedSkillName) Text_SelectedSkillName->SetVisibility(ESlateVisibility::Collapsed);
+	if (Text_SelectedSkillDescription) Text_SelectedSkillDescription->SetVisibility(ESlateVisibility::Collapsed);
+	if (Image_SelectedSkillIcon) Image_SelectedSkillIcon->SetVisibility(ESlateVisibility::Collapsed);
+
 	CurrentMenuState = ESkillMenuState::ResultSelect;
-	ResultSelectedIndex = 0;
+	ResultSelectedIndex = 1;
+
 	OnResultSelectionChanged(ResultSelectedIndex);
+	UpdateResultFocusVisuals();
 }
 
 void UPokaPokaSkillWidget::OnNextClicked()
 {
-	if (APokaPokaECCPlayerController* PC = Cast<APokaPokaECCPlayerController>(GetOwningPlayer()))
+	APokaPokaECCPlayerController* PC = Cast<APokaPokaECCPlayerController>(GetOwningPlayer());
+	if (PC)
 	{
 		PC->SelectSkill(CurrentSelectedSkill);
+
+		// ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã‚’å†ã³å‹•ã‹ã›ã‚‹ã‚ˆã†ã«ã™ã‚‹å‡¦ç†
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
+
+	// ãƒãƒ¼ã‚ºç”»é¢ï¼ˆä¸€æ™‚åœæ­¢ï¼‰ã®è§£é™¤
+	UGameplayStatics::SetGamePaused(this, false);
+
+	// Day1ã€œDay7ã€ãã—ã¦ãƒªã‚¶ãƒ«ãƒˆç”»é¢ã¸ã®é·ç§»ãƒ­ã‚¸ãƒƒã‚¯
+	FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	if (CurrentLevelName.Equals("Day1", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day2"));
+	}
+	else if (CurrentLevelName.Equals("Day2", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day3"));
+	}
+	else if (CurrentLevelName.Equals("Day3", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day4"));
+	}
+	else if (CurrentLevelName.Equals("Day4", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day5"));
+	}
+	else if (CurrentLevelName.Equals("Day5", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day6"));
+	}
+	else if (CurrentLevelName.Equals("Day6", ESearchCase::IgnoreCase))
+	{
+		UGameplayStatics::OpenLevel(this, FName("Day7"));
+	}
+	else if (CurrentLevelName.Equals("Day7", ESearchCase::IgnoreCase))
+	{
+		// â€» ãƒªã‚¶ãƒ«ãƒˆç”»é¢ã®ãƒ¬ãƒ™ãƒ«åãŒã€ŒResultMapã€ã§ã¯ãªã„å ´åˆã¯ã€ä»¥ä¸‹ã‚’å¤‰æ›´ã—ã¦ãã ã•ã„
+		UGameplayStatics::OpenLevel(this, FName("Result"));
+	}
+	else
+	{
+		// ãã‚Œä»¥å¤–ã®å ´åˆã¯UIã‚’é–‰ã˜ã¦ãã®ã¾ã¾å†é–‹
+		RemoveFromParent();
 	}
 }
 
 void UPokaPokaSkillWidget::OnTitleClicked()
 {
-	UGameplayStatics::OpenLevel(this, FName("TitleMap"));
+	UGameplayStatics::SetGamePaused(this, false);
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }

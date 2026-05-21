@@ -33,9 +33,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
 	void ProceedToSkillSelection();
 
-	// スキル選択が完了した時にコントローラーから呼ばれる（ショップを開くか判定）
-	UFUNCTION(BlueprintCallable, Category = "Game Flow")
-	void ProceedAfterSkill();
 
 	// ショップ終了後、またはショップが無い日に呼ばれる（次のレベルへ遷移）
 	UFUNCTION(BlueprintCallable, Category = "Game Flow")
@@ -51,7 +48,7 @@ public:
 	EStoreState CurrentState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Flow")
-	float DayDuration = 115.0f;
+	float DayDuration = 5.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Flow")
 	float TimeRemaining;
