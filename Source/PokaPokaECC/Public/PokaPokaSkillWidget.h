@@ -10,7 +10,7 @@ class UButton;
 class UBorder;
 class UPanelWidget;
 class UPokaPokaSkillSlotWidget;
-class UImage; // ★画像表示用に追加
+class UImage;
 
 UENUM(BlueprintType)
 enum class ESkillMenuState : uint8
@@ -35,9 +35,10 @@ public:
 
 	void GenerateUI();
 	void UpdateCardFocusVisuals();
-
-	// ★追加：テキストや画像、フォーカスを一括で更新する関数
 	void UpdateSkillDisplay();
+
+	// ★追加：リザルト画面のボタンフォーカス表示を更新する関数
+	void UpdateResultFocusVisuals();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skill UI")
 	TSubclassOf<UPokaPokaSkillSlotWidget> SkillSlotClass;
@@ -77,9 +78,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* TitleBtn;
 
-	// ==========================================
-	// ★追加：移植した詳細情報・背景表示用パーツ
-	// ==========================================
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* Text_SelectedSkillName;
 
