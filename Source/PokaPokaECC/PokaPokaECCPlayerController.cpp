@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PokaPokaECCPlayerController.h"
+#include "PokaPokaECCGameMode.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "Engine/LocalPlayer.h"
@@ -13,10 +14,16 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Kismet/GameplayStatics.h"
 #include "PokaPokaECCGameInstance.h" // ローグライクの日数管理にキャストするためインクルード
+#include "ChefShopWidget.h"
+#include "PokaPokaECCGameMode.h"
+#include "SkillEffectManagerComponent.h"
 
 APokaPokaECCPlayerController::APokaPokaECCPlayerController()
 {
 	bIsSkillSelectionOpen = false;
+
+	//コントローラー生成時にスキルマネージャーコンポーネントも一緒に生成する
+	SkillEffectManager = CreateDefaultSubobject<USkillEffectManagerComponent>(TEXT("SkillEffectManager"));
 }
 
 void APokaPokaECCPlayerController::OpenSkillMenu()
@@ -70,6 +77,11 @@ void APokaPokaECCPlayerController::SelectSkill(UUSkillDataAsset* SelectedSkill)
 	// TODO: ここでプレイヤーのパラメータやGameInstanceに永続バフの効果量を反映させる
 	// ------------------------------------------------------------------------
 
+	if (SkillEffectManager)
+	{
+		SkillEffectManager->ExecuteSkillEffect(SelectedSkill);
+	}
+
 	// UIインスタンスを画面から破棄
 	if (SkillMenuInstance)
 	{
@@ -85,18 +97,10 @@ void APokaPokaECCPlayerController::SelectSkill(UUSkillDataAsset* SelectedSkill)
 	SetInputMode(FInputModeGameOnly());
 	bIsSkillSelectionOpen = false;
 
-	// --- 7日間のローグライク進行と「次のレベルに移行」させる処理 ---
-	if (UPokaPokaECCGameInstance* GI = Cast<UPokaPokaECCGameInstance>(GetGameInstance()))
+	// --- 変更箇所：次のステップ（ショップ判定）をGameModeに依頼 ---
+	if (APokaPokaECCGameMode* GameMode = Cast<APokaPokaECCGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		// 例: GameInstance等で日数（Day）を管理している場合、インクリメントして対応するマップをロード
-		// ※ GameInstance側に日数管理用の int32 CurrentDay などの変数があると非常に綺麗に管理できます
-
-		// ここでは例として、次の日のレベル（例: "Stage_Day2" など）をロードする処理の枠組みを記述します
-		// FString NextLevelName = FString::Printf(TEXT("Stage_Day%d"), GI->CurrentDay);
-		// UGameplayStatics::OpenLevel(this, FName(*NextLevelName));
-
-		// 一時的な確認用として、現在のステージをリスタート、あるいは次の固定の料理マップへ移行
-		UGameplayStatics::OpenLevel(this, FName("CookingStage_Next"));
+		GameMode->ProceedAfterSkill();
 	}
 }
 
@@ -218,5 +222,27 @@ void APokaPokaECCPlayerController::HandleEnterAction()
 	if (bIsSkillSelectionOpen && SkillMenuInstance)
 	{
 		SkillMenuInstance->OnEnterKeyPressed();
+	}
+}
+
+// ----------------------------------------------------
+// ショップUIを生成して表示する処理
+// ----------------------------------------------------
+void APokaPokaECCPlayerController::ShowShopUI()
+{
+	if (!ShopWidgetClass) return;
+
+	ShopWidgetInstance = CreateWidget<UChefShopWidget>(this, ShopWidgetClass);
+	if (ShopWidgetInstance)
+	{
+		ShopWidgetInstance->InitShopItems(); // 8個のアイテムを並べる
+		ShopWidgetInstance->AddToViewport();
+
+		// UI操作のみにフォーカスをロック
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(ShopWidgetInstance->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
 	}
 }
