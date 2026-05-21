@@ -76,5 +76,5 @@ void UPauseMenuWidget::OnTitleClicked()
 {
 	// タイトル画面へ遷移
 	// ※ "TitleLevel" の部分は実際のタイトルマップ名に合わせて変更してください
-	UGameplayStatics::OpenLevel(this, FName("TitleLevel"));
+	UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }
