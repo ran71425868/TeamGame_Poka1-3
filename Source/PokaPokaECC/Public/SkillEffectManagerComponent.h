@@ -18,24 +18,17 @@ public:
 	void ExecuteSkillEffect(UUSkillDataAsset* AppliedSkill);
 
 protected:
-	// --- 全20スキルの効果発動関数 ---
+	// --- 全12スキルの効果発動関数 ---
 
 	void ApplyArtisanPatience(float ModifierValue);
 	void ApplyCozyAtmosphere(float ModifierValue);
 	void ApplyFastFryer(float ModifierValue);
 	void ApplyForbiddenFullCourse(float ModifierValue);
 	void ApplyGratuityTipping(float ModifierValue);
-	void ApplyGreedyTray(float ModifierValue);
 	void ApplyHighHeatBurner(float ModifierValue);
-	void ApplyLastSpurtRush(float ModifierValue);
-	void ApplyLegendaryQueue(float ModifierValue);
 	void ApplyLightFootwork(float ModifierValue);
-	void ApplyMichelinRush(float ModifierValue);
-	void ApplyPerfectRiceBoil(float ModifierValue);
 	void ApplyPlatingMastery(float ModifierValue);
-	void ApplyProMicrowave(float ModifierValue);
 	void ApplyRecipeInspiration(float ModifierValue);
-	void ApplyServiceHigh(float ModifierValue);
 	void ApplySpeedstersHaste(float ModifierValue);
 	void ApplyStarService(float ModifierValue);
 	void ApplyUltraEfficiency(float ModifierValue);

@@ -6,7 +6,10 @@
 #include "BobNPCCharacter.generated.h"
 
 class UAnimMontage;
-class UBoxComponent; // 【追加】箱の判定を使うための宣言
+class UBoxComponent;
+// ★追加：UI用のクラスを宣言
+class UWidgetComponent;
+class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCustomerLeftDelegate);
 
@@ -62,7 +65,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float MoneySpawnZOffset;
 
-    // 【追加】客の目の前に付ける「受け取り判定」
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    float PatienceTime = 30.0f;
+
+    FTimerHandle PatienceTimerHandle;
+
+    UFUNCTION()
+    void OnPatienceDepleted();
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
     UBoxComponent* ReceiveArea;
 
@@ -75,6 +85,23 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
     UAnimMontage* YellingMontage;
 
+    // ==========================================================
+    // ★ここから追加：頭上のポップ（UI）と画像設定用の変数
+    // ==========================================================
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "UI")
+    UWidgetComponent* OrderWidgetComp;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TMap<FName, UTexture2D*> FoodIconMap;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Shop")
+    UTexture2D* CurrentOrderIcon;
+
+    // ブループリントに「この画像をUIにセットして！」と命令する専用イベント
+    UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+    void UpdateOrderUI(UTexture2D* IconTexture);
+    // ==========================================================
+
     UFUNCTION(BlueprintCallable, Category = "AI")
     void MoveToDestination(FVector Destination);
 
@@ -84,7 +111,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Event")
     bool ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore);
 
-    // 【追加】判定エリアにアイテムが入ってきた時に呼ばれる関数
     UFUNCTION()
     void OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
