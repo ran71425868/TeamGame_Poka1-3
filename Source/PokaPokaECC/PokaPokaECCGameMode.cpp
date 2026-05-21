@@ -1,5 +1,5 @@
 #include "PokaPokaECCGameMode.h"
-#include "ChefPlayerController.h"
+#include "PokaPokaECCPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 
@@ -7,7 +7,7 @@ APokaPokaECCGameMode::APokaPokaECCGameMode()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	DayDuration = 60.0f; // 初日は1分(60秒)
+	DayDuration = 5.0f; // 初日は1分(60秒)
 	TimeRemaining = DayDuration;
 	CurrentState = EStoreState::Preparation;
 	CurrentDay = 1;
@@ -55,21 +55,20 @@ void APokaPokaECCGameMode::EndDay()
 {
 	CurrentState = EStoreState::StoreClosed;
 
-	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Business finish"));
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("営業終了"));
 
-	// 1. プレイヤーの操作を禁止にする
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	if (PC)
 	{
 		if (APawn* PlayerPawn = PC->GetPawn())
 		{
-			PlayerPawn->DisableInput(PC); // 移動やインタラクトを物理的にストップ
+			PlayerPawn->DisableInput(PC);
 		}
 
-		// 2. スキル選択画面を表示する
-		if (AChefPlayerController* ChefPC = Cast<AChefPlayerController>(PC))
+		// ★ ここを APokaPokaECCPlayerController に変更 ★
+		if (APokaPokaECCPlayerController* MainPC = Cast<APokaPokaECCPlayerController>(PC))
 		{
-			ChefPC->OpenSkillMenu();
+			MainPC->OpenSkillMenu();
 		}
 	}
 }

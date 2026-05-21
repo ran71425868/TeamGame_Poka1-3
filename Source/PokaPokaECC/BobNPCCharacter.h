@@ -7,6 +7,8 @@
 
 class UAnimMontage;
 class UBoxComponent;
+class UWidgetComponent;
+class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCustomerLeftDelegate);
 
@@ -62,7 +64,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float MoneySpawnZOffset;
 
-    // --- 【追加】時間経過で帰るための設定 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     float PatienceTime = 30.0f;
 
@@ -70,7 +71,6 @@ public:
 
     UFUNCTION()
     void OnPatienceDepleted();
-    // ----------------------------------------
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shop")
     UBoxComponent* ReceiveArea;
@@ -83,6 +83,21 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
     UAnimMontage* YellingMontage;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "UI")
+    UWidgetComponent* OrderWidgetComp;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TMap<FName, int32> FoodUnlockDays;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TMap<FName, UTexture2D*> FoodIconMap;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Shop")
+    UTexture2D* CurrentOrderIcon;
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+    void UpdateOrderUI(UTexture2D* IconTexture);
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     void MoveToDestination(FVector Destination);
@@ -103,4 +118,7 @@ private:
     void MoveToNextPathPoint();
 
     void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
+
+    // ★追加：アニメーションが終わったあとに実際に移動を開始する処理
+    void LeaveShop();
 };

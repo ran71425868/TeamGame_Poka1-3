@@ -27,12 +27,46 @@ public:
     int32 CurrentDay = 1;
 
     // --- ショップ機能 ---
-
-    // ショップに並べる8個のスキルを取得する
     UFUNCTION(BlueprintCallable, Category = "Shop System")
     TArray<UUSkillDataAsset*> GetShopSkills();
 
-    // スキルの購入処理（成功したらtrueを返す）
     UFUNCTION(BlueprintCallable, Category = "Shop System")
     bool BuySkill(UUSkillDataAsset* SkillToBuy);
+
+
+    // ====================================================
+    // --- スキル効果による永続バフパラメータ (12スキル分) ---
+    // ====================================================
+
+    // 客関連
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float CustomerPatienceBonus = 0.0f;          // ArtisanPatience
+
+    // プレイヤー関連
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float MovementSpeedBonus = 0.0f;             // SpeedstersHaste / LightFootwork
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float InteractSpeedMultiplier = 1.0f;        // UltraEfficiency
+
+    // 調理器具関連 (速度倍率・デフォルトは1.0)
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float FryerSpeedMultiplier = 1.0f;           // FastFryer
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float BurnerSpeedMultiplier = 1.0f;          // HighHeatBurner
+
+    // スコア・システム関連
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float TipProbabilityBonus = 0.0f;            // CozyAtmosphere
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float TipAmountMultiplier = 1.0f;            // GratuityTipping
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float PlatingValueBonus = 0.0f;              // PlatingMastery
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float RecipeUpgradeProbability = 0.0f;       // RecipeInspiration
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    float ReputationGainMultiplier = 1.0f;       // StarService
+
+    // 特殊フラグ
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Game Data|Buffs")
+    bool bIsForbiddenMenuUnlocked = false;       // ForbiddenFullCourse
 };
