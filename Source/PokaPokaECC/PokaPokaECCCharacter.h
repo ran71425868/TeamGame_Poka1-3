@@ -72,4 +72,10 @@ public:
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	/** アイテム保持コンポーネントを返す */
 	FORCEINLINE class UItemHoldComponent* GetItemHoldComp() const { return ItemHoldComp; }
+
+	// --- スキルバフ用のパラメータ ---
+
+	// インタラクト（作業）速度の倍率
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	float InteractSpeedMultiplier = 1.0f;
 };

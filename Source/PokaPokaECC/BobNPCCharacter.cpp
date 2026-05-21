@@ -1,4 +1,4 @@
-#include "BobNPCCharacter.h"
+ï»¿#include "BobNPCCharacter.h"
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
@@ -9,6 +9,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
 #include "ItemHoldComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Engine/Texture2D.h"
+#include "PokaPokaECCGameMode.h"
 
 ABobNPCCharacter::ABobNPCCharacter()
 {
@@ -34,6 +37,13 @@ ABobNPCCharacter::ABobNPCCharacter()
     ReceiveArea->SetBoxExtent(FVector(60.0f, 60.0f, 60.0f));
     ReceiveArea->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
     ReceiveArea->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+    OrderWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("OrderWidgetComp"));
+    OrderWidgetComp->SetupAttachment(RootComponent);
+    OrderWidgetComp->SetRelativeLocation(FVector(0.0f, 0.0f, 130.0f));
+    OrderWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+    OrderWidgetComp->SetDrawSize(FVector2D(120.0f, 120.0f));
+    OrderWidgetComp->SetVisibility(false);
 }
 
 void ABobNPCCharacter::BeginPlay()
@@ -41,6 +51,31 @@ void ABobNPCCharacter::BeginPlay()
     Super::BeginPlay();
 
     ReceiveArea->OnComponentBeginOverlap.AddDynamic(this, &ABobNPCCharacter::OnReceiveAreaOverlap);
+
+    if (APokaPokaECCGameMode* GM = Cast<APokaPokaECCGameMode>(UGameplayStatics::GetGameMode(GetWorld())))
+    {
+        int32 Today = GM->CurrentDay;
+        TArray<FName> AvailableFoods;
+
+        for (const TPair<FName, int32>& Pair : FoodUnlockDays)
+        {
+            if (Today >= Pair.Value)
+            {
+                AvailableFoods.Add(Pair.Key);
+            }
+        }
+
+        if (AvailableFoods.Num() > 0)
+        {
+            int32 RandomIndex = FMath::RandRange(0, AvailableFoods.Num() - 1);
+            DesiredFoodTag = AvailableFoods[RandomIndex];
+        }
+    }
+
+    if (FoodIconMap.Contains(DesiredFoodTag))
+    {
+        CurrentOrderIcon = FoodIconMap[DesiredFoodTag];
+    }
 
     if (!TargetCounterTag.IsNone())
     {
@@ -50,9 +85,6 @@ void ABobNPCCharacter::BeginPlay()
         if (FoundActors.Num() > 0)
         {
             TargetCounter = FoundActors[0];
-
-            FString OrderMsg = FString::Printf(TEXT("Bob: FOUND Table! I want to eat [%s]!"), *DesiredFoodTag.ToString());
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, OrderMsg);
         }
     }
 }
@@ -118,11 +150,8 @@ void ABobNPCCharacter::OnReceiveAreaOverlap(UPrimitiveComponent* OverlappedCompo
                 UItemHoldComponent* HoldComp = PlayerChar->FindComponentByClass<UItemHoldComponent>();
                 if (HoldComp)
                 {
-                    int32 PenaltyPoint = 10;
-                    HoldComp->TotalCollectedScore -= PenaltyPoint;
+                    HoldComp->TotalCollectedScore -= 10;
                     if (HoldComp->TotalCollectedScore < 0) HoldComp->TotalCollectedScore = 0;
-
-                    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("yƒyƒiƒ‹ƒeƒBz‘ä‚ÉŠÔˆá‚Á‚½—¿—‚ð’u‚©‚ê‚½I •]‰¿‚ª %d ‰º‚ª‚Á‚½I"), PenaltyPoint));
                 }
             }
         }
@@ -165,28 +194,53 @@ void ABobNPCCharacter::MoveToNextPathPoint()
     else
     {
         CurrentState = ECustomerState::Waiting;
+
+        // åˆ°ç€æ™‚ã«å°‘ã—å¾…ã¤ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ãªã©ã‚’é³´ã‚‰ã—ãŸã„å ´åˆã¯ãã®ã¾ã¾æ®‹ã—ã¦OKã§ã™
         if (TalkingMontage) PlayAnimMontage(TalkingMontage);
 
-        // y’Ç‰ÁzƒJƒEƒ“ƒ^[‚É’…‚¢‚½‚çƒ^ƒCƒ}[ŠJŽn
         GetWorld()->GetTimerManager().SetTimer(PatienceTimerHandle, this, &ABobNPCCharacter::OnPatienceDepleted, PatienceTime, false);
+
+        if (OrderWidgetComp)
+        {
+            UpdateOrderUI(CurrentOrderIcon);
+            OrderWidgetComp->SetVisibility(true);
+        }
     }
+}
+
+// â˜…è¿½åŠ ï¼šã‚¿ã‚¤ãƒžãƒ¼ã«ã‚ˆã£ã¦å®Ÿéš›ã«å¸°ã‚‹å‡¦ç†
+void ABobNPCCharacter::LeaveShop()
+{
+    MoveToDestination(ExitLocation);
 }
 
 bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMultiplier, int32 EvaluationScore)
 {
-    // y’Ç‰Áz—¿—‚ðŽó‚¯Žæ‚Á‚½‚çƒ^ƒCƒ}[‚ðŽ~‚ß‚é
     GetWorld()->GetTimerManager().ClearTimer(PatienceTimerHandle);
-
     CurrentState = ECustomerState::Leaving;
 
+    if (OrderWidgetComp) OrderWidgetComp->SetVisibility(false);
+
+    float WaitTime = 0.1f; // ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ãŒãªã„å ´åˆã®æœ€å°å¾…æ©Ÿæ™‚é–“
+
+    // âŒ é•ã†å•†å“ã‚’æ¸¡ã•ã‚ŒãŸå ´åˆ
     if (ProvidedFoodTag != DesiredFoodTag)
     {
-        FString DebugMsg = FString::Printf(TEXT("Bob: WRONG FOOD! I wanted [%s], but got [%s]!"), *DesiredFoodTag.ToString(), *ProvidedFoodTag.ToString());
-        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, DebugMsg);
-        UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
+        if (YellingMontage)
+        {
+            WaitTime = PlayAnimMontage(YellingMontage); // æ€’ã‚‹ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å†ç”Ÿã—ã€é•·ã•ã‚’å–å¾—
+        }
 
-        MoveToDestination(ExitLocation);
+        // ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ãŒçµ‚ã‚ã£ãŸã‚‰å¸°ã‚‹
+        FTimerHandle LeaveTimer;
+        GetWorld()->GetTimerManager().SetTimer(LeaveTimer, this, &ABobNPCCharacter::LeaveShop, FMath::Max(WaitTime, 0.1f), false);
         return false;
+    }
+
+    // â­• æ­£ã—ã„å•†å“ã‚’æ¸¡ã•ã‚ŒãŸå ´åˆ
+    if (TalkingMontage)
+    {
+        WaitTime = PlayAnimMontage(TalkingMontage); // Talkingã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å†ç”Ÿã—ã€é•·ã•ã‚’å–å¾—
     }
 
     if (BaseMoneyClass && TargetCounter)
@@ -203,7 +257,6 @@ bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
         if (SpawnedMoney)
         {
             int32 FinalAmount = FMath::RoundToInt(BaseMoneyAmount * PriceMultiplier);
-
             if (FProperty* Property = SpawnedMoney->GetClass()->FindPropertyByName(TEXT("Amount")))
             {
                 if (FIntProperty* IntProperty = CastField<FIntProperty>(Property))
@@ -211,14 +264,12 @@ bool ABobNPCCharacter::ReceiveFoodAndLeave(FName ProvidedFoodTag, float PriceMul
                     IntProperty->SetPropertyValue_InContainer(SpawnedMoney, FinalAmount);
                 }
             }
-
-            FString DebugMsg = FString::Printf(TEXT("Bob: SUCCESS! Ordered [%s], Paid Val=[%d] (Multiplier: %.2f), Points=[%d]"), *DesiredFoodTag.ToString(), FinalAmount, PriceMultiplier, EvaluationScore);
-            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, DebugMsg);
-            UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
         }
     }
 
-    MoveToDestination(ExitLocation);
+    // ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ãŒçµ‚ã‚ã£ãŸã‚‰å¸°ã‚‹
+    FTimerHandle LeaveTimer;
+    GetWorld()->GetTimerManager().SetTimer(LeaveTimer, this, &ABobNPCCharacter::LeaveShop, FMath::Max(WaitTime, 0.1f), false);
     return true;
 }
 
@@ -242,18 +293,19 @@ void ABobNPCCharacter::OnMoveCompleted(FAIRequestID RequestID, const FPathFollow
     }
 }
 
-// y’Ç‰Áz‘Ò‚½‚³‚ê‚·‚¬‚ÄŽžŠÔØ‚ê‚É‚È‚Á‚½Žž‚Ìˆ—
 void ABobNPCCharacter::OnPatienceDepleted()
 {
     if (CurrentState != ECustomerState::Waiting) return;
 
     CurrentState = ECustomerState::Leaving;
 
-    if (YellingMontage) PlayAnimMontage(YellingMontage);
+    if (OrderWidgetComp) OrderWidgetComp->SetVisibility(false);
 
-    FString DebugMsg = TEXT("Bob: TOO LATE! I'm leaving!");
-    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, DebugMsg);
-    UE_LOG(LogTemp, Warning, TEXT("%s"), *DebugMsg);
+    float WaitTime = 0.1f;
+    if (YellingMontage)
+    {
+        WaitTime = PlayAnimMontage(YellingMontage); // æ€’ã‚‹ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å†ç”Ÿ
+    }
 
     ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
     if (PlayerChar)
@@ -261,11 +313,12 @@ void ABobNPCCharacter::OnPatienceDepleted()
         UItemHoldComponent* HoldComp = PlayerChar->FindComponentByClass<UItemHoldComponent>();
         if (HoldComp)
         {
-            int32 PenaltyPoint = 20;
-            HoldComp->TotalCollectedScore -= PenaltyPoint;
+            HoldComp->TotalCollectedScore -= 20;
             if (HoldComp->TotalCollectedScore < 0) HoldComp->TotalCollectedScore = 0;
         }
     }
 
-    MoveToDestination(ExitLocation);
+    // ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ãŒçµ‚ã‚ã£ã¦ã‹ã‚‰å¸°ã‚‹
+    FTimerHandle LeaveTimer;
+    GetWorld()->GetTimerManager().SetTimer(LeaveTimer, this, &ABobNPCCharacter::LeaveShop, FMath::Max(WaitTime, 0.1f), false);
 }
