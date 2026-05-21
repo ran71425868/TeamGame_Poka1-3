@@ -1,6 +1,10 @@
 #include "ItemSpawner.h"
 #include "Engine/World.h"
 
+// --- 【追加】音とエフェクトを再生するためのインクルード ---
+#include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+
 // コンストラクタ：ゲーム開始前の初期設定
 AItemSpawner::AItemSpawner()
 {
@@ -31,7 +35,19 @@ AActor* AItemSpawner::SpawnItem()
 
 	// 世界（World）にアイテムを生成（Spawn）する
 	AActor* SpawnedItem = GetWorld()->SpawnActor<AActor>(ItemClassToSpawn, SpawnLocation, SpawnRotation);
+	
+	// --- 【追加】スポーン時に音を鳴らす ---
+	if (SpawnSound)
+	{
+		// スポナーの位置から音を鳴らす
+		UGameplayStatics::PlaySoundAtLocation(this, SpawnSound, GetActorLocation());
+	}
 
+	if (SpawnEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SpawnEffect, SpawnLocation, SpawnRotation);
+	}
+	
 	// 生成したアイテムを返す
 	return SpawnedItem;
 }
