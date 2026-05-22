@@ -43,23 +43,22 @@ public:
 	// アイテムを置いたときに再生するサウンド
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Sound")
 	class USoundBase* PlaceSound;
-	// ★追加: アイテムを持った時に再生するエフェクト
+	// アイテムを持った時に再生するエフェクト
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact|Effect")
 	class UParticleSystem* PickUpEffect;
 
-
 	// グリッド配置関連の設定
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
-	float GridSize = 100.0f; // グリッドのサイズ（100cm単位など）
+	float GridSize = 100.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
-	float PlacementZOffset = 20.0f; // 床に置いた際にめり込まないためのZ方向オフセット
+	float PlacementZOffset = 20.0f;
 
-	// アイテムを配置できる高さの上限（キャラクターの中心座標からの相対高さ）
+	// アイテムを配置できる高さの上限
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
 	float MaxPlacementHeight = 50.0f;
 
-	// ハイライト表示用のメッシュとマテリアル（BPで設定）
+	// ハイライト表示用のメッシュとマテリアル
 	UPROPERTY(EditAnywhere, Category = "Interact|Grid")
 	UStaticMesh* HighlightMeshAsset;
 
@@ -82,12 +81,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "ItemHold|Events")
 	FOnMoneyCollectedDelegate OnMoneyCollected;
 
-	// 統計情報（回収したお金とスコアの合計）
+	// 統計情報
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stats")
 	int32 TotalCollectedMoney = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stats")
 	int32 TotalCollectedScore = 0;
+
+	// スポナーの選択を切り替える関数 (1: 右, -1: 左)
+	// BlueprintCallableをつけることで、BPの方向キーイベントから呼べるようにします
+	UFUNCTION(BlueprintCallable, Category = "Interact")
+	void CycleSpawnerSelection(int32 Direction);
 
 private:
 	// 内部状態

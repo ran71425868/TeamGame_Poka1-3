@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -10,32 +8,27 @@ UCLASS()
 class POKAPOKAECC_API AItemSpawner : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	AItemSpawner();
-
-protected:
-	// スポーンさせるアイテムのクラス（BPのインスペクタで設定できるようにする）
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner Settings")
-	TSubclassOf<AActor> ItemClassToSpawn;
-
-	// スポナーの見た目（木箱などのメッシュ）
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UStaticMeshComponent* SpawnerMesh;
-
-	// --- 【追加】アイテムが生成された時の音 ---
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner Settings|FX")
-	class USoundBase* SpawnSound;
-
-	// --- 【追加】アイテムが生成された時のエフェクト ---
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawner Settings|FX")
-	class UNiagaraSystem* SpawnEffect;
 
 public:
-	// プレイヤーがインタラクトした時に呼ばれる関数
-	// 生成したアイテムを返す（プレイヤー側の処理で、それを受け取って手に付けるため）
-	UFUNCTION(BlueprintCallable, Category = "Spawner")
+	AItemSpawner();
+
+	// ▼【変更】1つだけではなく、複数のアイテムをリストとして持てるように変更
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+	TArray<TSubclassOf<AActor>> SpawnItemClasses;
+
+	// デバッグ・UI表示用のアイテム名（上のSpawnItemClassesと同じ順番で設定します）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+	TArray<FString> ItemNames;
+
+	// 現在選択されているインデックス
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
+	int32 CurrentSelectedIndex;
+
+	// 生成処理
+	UFUNCTION(BlueprintCallable, Category = "Spawning")
 	AActor* SpawnItem();
 
+	// ▼【追加】選択を切り替える関数（Directionは 1:右, -1:左）
+	UFUNCTION(BlueprintCallable, Category = "Spawning")
+	void CycleSelection(int32 Direction);
 };

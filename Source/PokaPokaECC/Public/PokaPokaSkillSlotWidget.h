@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -6,6 +6,9 @@
 #include "PokaPokaSkillSlotWidget.generated.h"
 
 class UButton;
+class UBorder;
+class UTextBlock;
+class UImage;
 
 UCLASS()
 class POKAPOKAECC_API UPokaPokaSkillSlotWidget : public UUserWidget
@@ -13,13 +16,9 @@ class POKAPOKAECC_API UPokaPokaSkillSlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// ƒƒCƒ“UI‚©‚çƒJ[ƒh‚ğ¶¬‚µ‚½‚ÉŒÄ‚Ño‚³‚ê‚é‰Šú‰»ŠÖ”
 	void InitializeSlot(UUSkillDataAsset* InSkillData, int32 InIndex);
-
-	// š’Ç‰ÁFƒƒCƒ“UI‚ÌC++‘¤‚©‚çA‚±‚ÌƒJ[ƒh‚ª‘I‘ğ’†‚©‚Ç‚¤‚©‚ğØ‚è‘Ö‚¦‚éŠÖ”
 	void SetCardFocused(bool bFocused);
 
-	// BP‘¤‚©‚ç‚¢‚Â‚Å‚àƒf[ƒ^‚ğŠm”F‚Å‚«‚é‚æ‚¤‚ÉƒvƒƒpƒeƒB‰»
 	UPROPERTY(BlueprintReadOnly, Category = "Skill Slot")
 	UUSkillDataAsset* SkillData;
 
@@ -29,19 +28,24 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 
-	// ƒJ[ƒh‚ª¶¬‚³‚ê‚½Œã‚ÉABP‘¤‚ÅuƒXƒLƒ‹–¼v‚âuƒAƒCƒRƒ“v‚ÌƒeƒLƒXƒg‚ğ‘‚«Š·‚¦‚é‚½‚ß‚Ì‡}
 	UFUNCTION(BlueprintImplementableEvent, Category = "Skill Slot")
 	void OnSlotInitialized();
 
-	// š’Ç‰ÁFƒtƒH[ƒJƒXó‘Ô‚ª•Ï‚í‚Á‚½‚ÉA‚±‚ÌƒJ[ƒh’P‘Ì‚ÌŒ©‚½–ÚiF‚â˜gj‚ğBP‘¤‚Å•Ï‚¦‚é‚½‚ß‚ÌƒCƒxƒ“ƒg
-	UFUNCTION(BlueprintImplementableEvent, Category = "Skill Slot")
-	void OnFocusChanged(bool bNewFocused);
-
-	// --- ƒuƒ‹[ƒvƒŠƒ“ƒg‚Æ•R‚Ã‚­UIƒp[ƒc ---
 	UPROPERTY(meta = (BindWidget))
 	UButton* CardBtn;
 
-	// ƒ{ƒ^ƒ“‚ª’¼ÚƒNƒŠƒbƒN‚³‚ê‚½‚ÌC++ŠÖ”
+	UPROPERTY(meta = (BindWidgetOptional))
+	UBorder* BackgroundBorder;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* Text_SkillName;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* Text_Description;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* Image_SkillIcon;
+
 	UFUNCTION()
 	void OnCardClicked();
 };
